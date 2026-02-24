@@ -152,11 +152,11 @@ async function extractVillagesFromPdf(pdfPath: string): Promise<ExtractedVillage
       
       if (parts.length >= 6) {
         // Try to parse from parts
-        const numericParts = parts.filter(p => /^\d+$/.test(p.trim()));
+        const numericParts = parts.filter((p: string) => /^\d+$/.test(p.trim()));
         
         if (numericParts.length >= 3) {
           // Find positions of numeric parts
-          const districtCodeIdx = parts.findIndex(p => /^\d+$/.test(p.trim()));
+          const districtCodeIdx = parts.findIndex((p: string) => /^\d+$/.test(p.trim()));
           if (districtCodeIdx >= 0 && districtCodeIdx + 5 < parts.length) {
             villages.push({
               districtLgdCode: parts[districtCodeIdx].trim(),

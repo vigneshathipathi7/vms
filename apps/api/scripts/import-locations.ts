@@ -320,15 +320,25 @@ async function importLocationsTransaction(
   // Use Prisma transaction for atomic operations
   await prisma.$transaction(async (tx) => {
     for (const talukData of locations) {
+      // First find or create the district
+      const district = await tx.district.upsert({
+        where: { name: talukData.district },
+        update: {},
+        create: { name: talukData.district },
+      });
+
       // Upsert Taluk (shared globally - no candidateId)
       const taluk = await tx.taluk.upsert({
-        where: { name: talukData.taluk },
-        update: { 
-          district: talukData.district,
+        where: { 
+          districtId_name: {
+            districtId: district.id,
+            name: talukData.taluk,
+          },
         },
+        update: {},
         create: {
           name: talukData.taluk,
-          district: talukData.district,
+          districtId: district.id,
         },
       });
       stats.taluks++;
