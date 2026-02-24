@@ -16,7 +16,10 @@
  * - Official district/constituency CSV/JSON datasets
  * 
  * Usage:
- *   npx ts-node scripts/import-locations.ts
+ *   BYPASS_MASTER_DATA_LOCK=true npx ts-node scripts/import-locations.ts
+ * 
+ * NOTE: Master data is protected by Prisma middleware.
+ *       The BYPASS_MASTER_DATA_LOCK=true flag is REQUIRED.
  * 
  * After running once, all candidates can use the same master location dataset.
  */
@@ -24,6 +27,14 @@
 import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
+import { assertMasterDataUnlocked, printMasterDataStatus } from './master-data-guard';
+
+// Enable master data bypass for this import script
+process.env.BYPASS_MASTER_DATA_LOCK = 'true';
+
+// Validate that bypass is properly configured
+assertMasterDataUnlocked('import-locations');
+printMasterDataStatus();
 
 const prisma = new PrismaClient();
 

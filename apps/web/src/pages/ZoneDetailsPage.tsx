@@ -332,8 +332,8 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
       name: voter.name,
       contactNumber: voter.contactNumber,
       voterId: voter.voterId,
-      talukId: voter.talukId,
-      villageId: voter.villageId,
+      talukId: voter.talukId ?? '',
+      villageId: voter.villageId ?? '',
       wardId: voter.wardId,
       address: voter.address,
       voted: voter.voted,
@@ -540,9 +540,9 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
                     </button>
                   </td>
                   <td className="px-2 py-2">{item.voterId}</td>
-                  <td className="px-2 py-2">{item.taluk.name}</td>
-                  <td className="px-2 py-2">{item.village.name}</td>
-                  <td className="px-2 py-2">Ward {item.ward.wardNumber}</td>
+                  <td className="px-2 py-2">{item.taluk?.name ?? '-'}</td>
+                  <td className="px-2 py-2">{item.village?.name ?? '-'}</td>
+                  <td className="px-2 py-2">{item.ward?.wardNumber ? `Ward ${item.ward.wardNumber}` : '-'}</td>
                   <td className="px-2 py-2">{item.address}</td>
                   <td className="px-2 py-2">{item.voted ? 'Voted' : 'Not voted'}</td>
                   <td className="px-2 py-2">{item.addedBy.username}</td>
@@ -610,15 +610,15 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
               </div>
               <div className="flex gap-2">
                 <dt className="text-slate-500">Taluk:</dt>
-                <dd>{openContact.taluk.name}</dd>
+                <dd>{openContact.taluk?.name ?? '-'}</dd>
               </div>
               <div className="flex gap-2">
                 <dt className="text-slate-500">Village:</dt>
-                <dd>{openContact.village.name}</dd>
+                <dd>{openContact.village?.name ?? '-'}</dd>
               </div>
               <div className="flex gap-2">
                 <dt className="text-slate-500">Ward:</dt>
-                <dd>Ward {openContact.ward.wardNumber}</dd>
+                <dd>{openContact.ward?.wardNumber ? `Ward ${openContact.ward.wardNumber}` : '-'}</dd>
               </div>
               <div className="flex gap-2">
                 <dt className="text-slate-500">Address:</dt>

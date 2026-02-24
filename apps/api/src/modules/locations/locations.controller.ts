@@ -4,6 +4,13 @@ import { AuthCookieGuard } from '../auth/guards/auth-cookie.guard';
 import { AuthenticatedUser } from '../auth/types/auth.types';
 import { LocationsService } from './locations.service';
 
+/**
+ * LocationsController - READ-ONLY
+ * 
+ * This controller provides read access to master geographic data.
+ * Master data is IMMUTABLE - no POST/PATCH/DELETE endpoints exist.
+ * All updates must be done via scripts/import-tn-constituencies.ts
+ */
 @Controller('locations')
 @UseGuards(AuthCookieGuard)
 export class LocationsController {
@@ -83,5 +90,41 @@ export class LocationsController {
       throw new UnauthorizedException('Unauthenticated');
     }
     return this.locationsService.getZones(user);
+  }
+
+  /**
+   * Get all Assembly Constituencies (READ ONLY).
+   */
+  @Get('assemblies')
+  getAssemblyConstituencies(
+    @Query('districtId') districtId: string | undefined,
+    @CurrentUser() user: AuthenticatedUser | undefined,
+  ) {
+    if (!user) {
+      throw new UnauthorizedException('Unauthenticated');
+    }
+    return this.locationsService.getAssemblyConstituencies(districtId);
+  }
+
+  /**
+   * Get all Parliamentary Constituencies (READ ONLY).
+   */
+  @Get('parliamentary')
+  getParliamentaryConstituencies(@CurrentUser() user: AuthenticatedUser | undefined) {
+    if (!user) {
+      throw new UnauthorizedException('Unauthenticated');
+    }
+    return this.locationsService.getParliamentaryConstituencies();
+  }
+
+  /**
+   * Get location data statistics (READ ONLY).
+   */
+  @Get('stats')
+  getLocationStats(@CurrentUser() user: AuthenticatedUser | undefined) {
+    if (!user) {
+      throw new UnauthorizedException('Unauthenticated');
+    }
+    return this.locationsService.getLocationStats();
   }
 }

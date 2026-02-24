@@ -65,25 +65,25 @@ enum AccessRequestStatus {
 // ============================================================================
 
 model Candidate {
-  id             String       @id @default(uuid())
-  fullName       String
-  phone          String
-  email          String       @unique
-  electionType   ElectionType
-  contestingFor  String
-  
+  id            String       @id @default(uuid())
+  fullName      String
+  phone         String
+  email         String       @unique
+  electionType  ElectionType
+  contestingFor String
+
   // Location fields - required based on electionType
-  state          String?      // Required for PARLIAMENT
-  district       String?      // Required for LOCAL_BODY, ASSEMBLY
-  constituency   String?      // Required for ASSEMBLY, PARLIAMENT (parliamentary constituency for PARLIAMENT, assembly for ASSEMBLY)
+  state                String? // Required for PARLIAMENT
+  district             String? // Required for LOCAL_BODY, ASSEMBLY
+  constituency         String? // Required for ASSEMBLY, PARLIAMENT (parliamentary constituency for PARLIAMENT, assembly for ASSEMBLY)
   assemblyConstituency String? // For PARLIAMENT: the assembly constituency within parliamentary constituency
-  taluk          String?      // For LOCAL_BODY reference
-  
-  partyName      String?
-  bio            String?
-  isActive       Boolean      @default(true)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  taluk                String? // For LOCAL_BODY reference
+
+  partyName String?
+  bio       String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Tenant-owned entities
   users          User[]
@@ -137,14 +137,14 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relations
-  createdVoters          Voter[]           @relation("VoterAddedBy")
+  createdVoters          Voter[]         @relation("VoterAddedBy")
   mfaMethods             MfaMethod[]
   mfaChallenges          MfaChallenge[]
   refreshTokens          RefreshToken[]
   recoveryCodes          RecoveryCode[]
   trustedDevices         TrustedDevice[]
-  auditLogs              AuditLog[]        @relation("AuditActor")
-  reviewedAccessRequests AccessRequest[]   @relation("AccessRequestReviewer")
+  auditLogs              AuditLog[]      @relation("AuditActor")
+  reviewedAccessRequests AccessRequest[] @relation("AccessRequestReviewer")
   assignedWards          SubUserWard[]
 
   @@unique([candidateId, username])
@@ -297,13 +297,13 @@ model Voter {
   // LOCAL_BODY: talukId, villageId, wardId required
   // ASSEMBLY: constituency required, wardId required, talukId/villageId optional
   // PARLIAMENT: state, constituency required, wardId required, talukId/villageId optional
-  state             String?   // For PARLIAMENT
-  constituency      String?   // For ASSEMBLY and PARLIAMENT
+  state                String? // For PARLIAMENT
+  constituency         String? // For ASSEMBLY and PARLIAMENT
   assemblyConstituency String? // For PARLIAMENT (assembly within parliamentary)
-  talukId           String?   // Required for LOCAL_BODY, optional for others
-  villageId         String?   // Required for LOCAL_BODY, optional for others
-  wardId            String    // Always required (ward/booth)
-  zoneId            String
+  talukId              String? // Required for LOCAL_BODY, optional for others
+  villageId            String? // Required for LOCAL_BODY, optional for others
+  wardId               String // Always required (ward/booth)
+  zoneId               String
 
   // Who added this voter
   addedByUserId String
@@ -331,22 +331,47 @@ model Voter {
 // LOCATION HIERARCHY MODELS
 // ============================================================================
 
-model Taluk {
+// Master District table for Tamil Nadu (38 districts)
+model District {
   id        String   @id @default(cuid())
   name      String   @unique
-  district  String
+  lgdCode   String?  @unique // LGD (Local Government Directory) code
+  stateCode String   @default("TN")
   createdAt DateTime @default(now())
+
+  taluks                 Taluk[]
+  assemblyConstituencies AssemblyConstituency[]
+
+  @@index([stateCode])
+  @@index([lgdCode])
+}
+
+// Taluk/Block within a district (226+ in TN)
+model Taluk {
+  id         String   @id @default(cuid())
+  name       String
+  lgdCode    String?  @unique // LGD (Local Government Directory) code
+  isLgdBlock Boolean  @default(false) // true = LGD Block, false = Revenue Taluk
+  districtId String
+  district   District @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
 
   villages Village[]
   voters   Voter[]
 
-  @@index([district])
+  @@unique([districtId, name])
+  @@index([districtId])
+  @@index([lgdCode])
+  @@index([isLgdBlock])
 }
 
+// Village/Panchayat within a taluk
 model Village {
   id        String   @id @default(cuid())
   name      String
+  lgdCode   String?  @unique // LGD (Local Government Directory) code
   talukId   String
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
   taluk     Taluk   @relation(fields: [talukId], references: [id], onDelete: Cascade)
@@ -356,21 +381,80 @@ model Village {
 
   @@unique([talukId, name])
   @@index([talukId])
+  @@index([lgdCode])
 }
 
+// Ward/Booth within a village (for LOCAL_BODY) or as polling booth (for ASSEMBLY/PARLIAMENT)
 model Ward {
   id         String   @id @default(cuid())
   wardNumber String
   villageId  String
   createdAt  DateTime @default(now())
 
-  village        Village       @relation(fields: [villageId], references: [id], onDelete: Cascade)
-  voters         Voter[]
-  managedBy      User[]
-  assignedUsers  SubUserWard[]
+  village       Village       @relation(fields: [villageId], references: [id], onDelete: Cascade)
+  voters        Voter[]
+  managedBy     User[]
+  assignedUsers SubUserWard[]
 
   @@unique([villageId, wardNumber])
   @@index([villageId])
+}
+
+// ============================================================================
+// ASSEMBLY CONSTITUENCY MODEL (234 in Tamil Nadu)
+// ============================================================================
+
+model AssemblyConstituency {
+  id                          String                     @id @default(cuid())
+  name                        String
+  code                        String? // Official EC code (e.g., "1" to "234")
+  districtId                  String
+  district                    District                   @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  parliamentaryConstituencyId String?
+  parliamentaryConstituency   ParliamentaryConstituency? @relation(fields: [parliamentaryConstituencyId], references: [id])
+  createdAt                   DateTime                   @default(now())
+
+  pollingBooths PollingBooth[]
+
+  @@unique([districtId, name])
+  @@index([districtId])
+  @@index([parliamentaryConstituencyId])
+}
+
+// ============================================================================
+// PARLIAMENTARY CONSTITUENCY MODEL (39 in Tamil Nadu)
+// ============================================================================
+
+model ParliamentaryConstituency {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  code      String? // Official EC code
+  stateCode String   @default("TN")
+  createdAt DateTime @default(now())
+
+  assemblyConstituencies AssemblyConstituency[]
+  pollingBooths          PollingBooth[]
+
+  @@index([stateCode])
+}
+
+// ============================================================================
+// POLLING BOOTH MODEL (for ASSEMBLY and PARLIAMENT elections)
+// ============================================================================
+
+model PollingBooth {
+  id                          String   @id @default(cuid())
+  boothNumber                 String
+  location                    String? // Address or landmark
+  assemblyConstituencyId      String?
+  parliamentaryConstituencyId String?
+  createdAt                   DateTime @default(now())
+
+  assemblyConstituency      AssemblyConstituency?      @relation(fields: [assemblyConstituencyId], references: [id], onDelete: Cascade)
+  parliamentaryConstituency ParliamentaryConstituency? @relation(fields: [parliamentaryConstituencyId], references: [id], onDelete: Cascade)
+
+  @@index([assemblyConstituencyId])
+  @@index([parliamentaryConstituencyId])
 }
 
 // ============================================================================
@@ -378,14 +462,14 @@ model Ward {
 // ============================================================================
 
 model LocationDatasetVersion {
-  id        String   @id @default(cuid())
-  source    String   // e.g., "election-commission-india", "manual-import"
-  version   String   // e.g., "2.0.1" or date format "20260223"
+  id         String   @id @default(cuid())
+  source     String // e.g., "election-commission-india", "manual-import"
+  version    String // e.g., "2.0.1" or date format "20260223"
   importedAt DateTime @default(now())
-  
+
   // Import metadata
-  metadata  Json?    // e.g., { taluks: 25, villages: 450, wards: 5000, status: "success" }
-  
+  metadata Json? // e.g., { taluks: 25, villages: 450, wards: 5000, status: "success" }
+
   @@index([source, version])
   @@index([importedAt])
 }
@@ -427,11 +511,11 @@ model AccessRequest {
   // Election details - dynamic based on electionType
   electionType         ElectionType
   contestingFor        String
-  state                String?      // Required for PARLIAMENT
-  district             String?      // Required for LOCAL_BODY, ASSEMBLY
-  constituency         String?      // Required for ASSEMBLY (assembly), PARLIAMENT (parliamentary)
-  assemblyConstituency String?      // For PARLIAMENT: assembly constituency within parliamentary
-  taluk                String?      // For LOCAL_BODY reference
+  state                String? // Required for PARLIAMENT
+  district             String? // Required for LOCAL_BODY, ASSEMBLY
+  constituency         String? // Required for ASSEMBLY (assembly), PARLIAMENT (parliamentary)
+  assemblyConstituency String? // For PARLIAMENT: assembly constituency within parliamentary
+  taluk                String? // For LOCAL_BODY reference
   partyName            String?
   bio                  String?
 
@@ -466,13 +550,13 @@ model AccessRequest {
 // ============================================================================
 
 model UsageSnapshot {
-  id          String   @id @default(cuid())
-  candidateId String
-  month       String   // Format: "YYYY-MM" e.g. "2026-03"
-  totalVoters Int
+  id           String   @id @default(cuid())
+  candidateId  String
+  month        String // Format: "YYYY-MM" e.g. "2026-03"
+  totalVoters  Int
   totalExports Int
-  totalUsers  Int
-  createdAt   DateTime @default(now())
+  totalUsers   Int
+  createdAt    DateTime @default(now())
 
   @@unique([candidateId, month])
   @@index([candidateId])

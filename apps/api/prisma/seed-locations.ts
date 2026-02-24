@@ -1,6 +1,19 @@
+/**
+ * Location Seed Script
+ * 
+ * Seeds location data from district-wards.json.
+ * 
+ * USAGE:
+ *   BYPASS_MASTER_DATA_LOCK=true npx ts-node prisma/seed-locations.ts
+ * 
+ * NOTE: Master data is protected. The BYPASS flag is required.
+ */
 import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs';
 import * as path from 'path';
+
+// Enable master data bypass for this seed script
+process.env.BYPASS_MASTER_DATA_LOCK = 'true';
 
 const prisma = new PrismaClient();
 

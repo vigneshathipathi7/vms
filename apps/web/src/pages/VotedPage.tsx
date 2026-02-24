@@ -147,9 +147,9 @@ export function VotedPage({ currentUser }: { currentUser: AuthUser | null }) {
                 <td className="px-2 py-2">{item.name}</td>
                 <td className="px-2 py-2">{item.voterId}</td>
                 <td className="px-2 py-2">{item.zone.name}</td>
-                <td className="px-2 py-2">{item.taluk.name}</td>
-                <td className="px-2 py-2">{item.village.name}</td>
-                <td className="px-2 py-2">Ward {item.ward.wardNumber}</td>
+                <td className="px-2 py-2">{item.taluk?.name ?? '-'}</td>
+                <td className="px-2 py-2">{item.village?.name ?? '-'}</td>
+                <td className="px-2 py-2">{item.ward?.wardNumber ? `Ward ${item.ward.wardNumber}` : '-'}</td>
                 <td className="px-2 py-2">{item.address}</td>
                 <td className="px-2 py-2">{item.addedBy.username}</td>
               </tr>

@@ -1,110 +1,114 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
-import { getApiBase } from '../services/api';
+import { useQuery } from '@tanstack/react-query';
+import { apiFetch } from '../services/api';
 
+interface LocationStats {
+    districts: number;
+    taluks: number;
+    villages: number;
+    wards: number;
+    assemblyConstituencies: number;
+    parliamentaryConstituencies: number;
+}
+
+/**
+ * LocationsSettingsPage - READ-ONLY VIEWER
+ * 
+ * Master geographic data is immutable and cannot be modified via UI.
+ * All updates must be done via official import scripts.
+ */
 export function LocationsSettingsPage() {
-    const queryClient = useQueryClient();
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const [successMsg, setSuccessMsg] = useState('');
-    const [errorMsg, setErrorMsg] = useState('');
-    const [isUploading, setIsUploading] = useState(false);
-
-    const uploadMutation = useMutation({
-        mutationFn: async (file: File) => {
-            const formData = new FormData();
-            formData.append('file', file);
-
-            // Extract authorization token from cookie if needed, or rely on browser passing it
-            // the apiService `apiFetch` currently only works with JSON bodies by default unless we modify it.
-            // We will do a raw fetch to /api/locations/upload-csv here.
-
-            const res = await fetch(`${getApiBase()}/locations/upload-csv`, {
-                method: 'POST',
-                body: formData,
-                credentials: 'include',
-            });
-
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.message || 'Failed to upload CSV');
-            }
-
-            return res.json();
-        },
-        onSuccess: (data) => {
-            setSuccessMsg(
-                `Success! Uploaded ${data.insertedDistricts} districts, ${data.insertedLocalBodies} areas/panchayats, and ${data.insertedWards} villages/wards!`,
-            );
-            setErrorMsg('');
-            if (fileInputRef.current) {
-                fileInputRef.current.value = '';
-            }
-            queryClient.invalidateQueries({ queryKey: ['locations'] });
-        },
-        onError: (err: Error) => {
-            setErrorMsg(err.message);
-            setSuccessMsg('');
-        },
-        onSettled: () => {
-            setIsUploading(false);
-        },
+    const statsQuery = useQuery({
+        queryKey: ['locations', 'stats'],
+        queryFn: () => apiFetch<LocationStats>('/locations/stats'),
     });
 
-    const handleUpload = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!fileInputRef.current?.files?.[0]) {
-            setErrorMsg('Please select a valid CSV file.');
-            return;
-        }
-        setIsUploading(true);
-        setErrorMsg('');
-        setSuccessMsg('');
-        uploadMutation.mutate(fileInputRef.current.files[0]);
-    };
+    const stats = statsQuery.data;
 
     return (
         <section className="mx-auto max-w-2xl space-y-6">
             <div>
-                <h2 className="text-2xl font-semibold">Location Setup</h2>
+                <h2 className="text-2xl font-semibold">Location Data</h2>
                 <p className="mt-1 text-sm text-slate-600">
-                    Upload a database of Village Panchayats, Municipalities, Corporations, or Areas.
-                    Our system is flexible enough to accommodate any structure!
+                    Tamil Nadu geographic master data. This data is read-only and managed by the system administrator.
                 </p>
             </div>
 
-            <div className="rounded-xl border bg-white p-6 shadow-sm">
-                <h3 className="mb-4 text-lg font-medium text-slate-900">Import CSV File</h3>
-
-                <div className="mb-4 rounded bg-blue-50 p-4 text-sm text-blue-800">
-                    <strong>CSV Format Requirements:</strong>
-                    <ul className="mt-2 list-inside list-disc space-y-1">
-                        <li>Column 1: <code>District</code> (e.g. "Kanchipuram")</li>
-                        <li>Column 2: <code>LocalBodyName</code> (e.g. "Sriperumbudur Village Panchayat")</li>
-                        <li>Column 3: <code>WardsCount</code> (Number of wards/villages to auto-generate. Minimum: 1)</li>
-                    </ul>
+            {/* Read-Only Notice */}
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <div className="flex items-start gap-3">
+                    <svg className="h-5 w-5 text-amber-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m4-10V5a2 2 0 00-2-2H8a2 2 0 00-2 2v2m10 0h2a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V9a2 2 0 012-2h2" />
+                    </svg>
+                    <div>
+                        <h3 className="font-medium text-amber-800">Master Data (Read-Only)</h3>
+                        <p className="mt-1 text-sm text-amber-700">
+                            Geographic data is managed centrally and cannot be modified through the application interface.
+                            Contact your system administrator for any data corrections.
+                        </p>
+                    </div>
                 </div>
+            </div>
 
-                <form onSubmit={handleUpload} className="space-y-4">
-                    <input
-                        type="file"
-                        accept=".csv"
-                        ref={fileInputRef}
-                        className="block w-full text-sm text-slate-500 file:mr-4 file:rounded-md file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-slate-800"
-                        disabled={isUploading}
-                    />
+            {/* Statistics */}
+            <div className="rounded-xl border bg-white p-6 shadow-sm">
+                <h3 className="mb-4 text-lg font-medium text-slate-900">Data Summary</h3>
+                
+                {statsQuery.isLoading ? (
+                    <div className="animate-pulse space-y-3">
+                        {[1, 2, 3, 4, 5, 6].map(i => (
+                            <div key={i} className="h-8 bg-slate-100 rounded"></div>
+                        ))}
+                    </div>
+                ) : statsQuery.error ? (
+                    <p className="text-red-600 text-sm">Failed to load statistics</p>
+                ) : stats ? (
+                    <div className="grid grid-cols-2 gap-4">
+                        <StatCard label="Districts" value={stats.districts} expected={38} />
+                        <StatCard label="Taluks" value={stats.taluks} expected={226} />
+                        <StatCard label="Villages" value={stats.villages} />
+                        <StatCard label="Wards" value={stats.wards} />
+                        <StatCard label="Assembly Constituencies" value={stats.assemblyConstituencies} expected={234} />
+                        <StatCard label="Parliamentary Constituencies" value={stats.parliamentaryConstituencies} expected={39} />
+                    </div>
+                ) : null}
+            </div>
 
-                    <button
-                        type="submit"
-                        disabled={isUploading}
-                        className="rounded-md bg-slate-900 px-4 py-2 font-medium text-white disabled:opacity-50"
-                    >
-                        {isUploading ? 'Uploading & Processing...' : 'Upload Database'}
-                    </button>
-                </form>
-
-                {successMsg && <p className="mt-4 text-sm font-medium text-green-700">{successMsg}</p>}
-                {errorMsg && <p className="mt-4 text-sm font-medium text-red-600">{errorMsg}</p>}
+            {/* Data Source */}
+            <div className="rounded-xl border bg-white p-6 shadow-sm">
+                <h3 className="mb-3 text-lg font-medium text-slate-900">Data Source</h3>
+                <ul className="space-y-2 text-sm text-slate-600">
+                    <li className="flex items-center gap-2">
+                        <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span>
+                        Election Commission of India (ECI)
+                    </li>
+                    <li className="flex items-center gap-2">
+                        <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span>
+                        Tamil Nadu State Election Commission
+                    </li>
+                    <li className="flex items-center gap-2">
+                        <span className="h-1.5 w-1.5 rounded-full bg-green-500"></span>
+                        Government of Tamil Nadu Official Datasets
+                    </li>
+                </ul>
             </div>
         </section>
+    );
+}
+
+function StatCard({ label, value, expected }: { label: string; value: number; expected?: number }) {
+    const isComplete = expected ? value >= expected : true;
+    
+    return (
+        <div className="rounded-lg border bg-slate-50 p-4">
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
+            <div className="mt-1 flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-slate-900">{value.toLocaleString()}</span>
+                {expected && (
+                    <span className={`text-xs ${isComplete ? 'text-green-600' : 'text-amber-600'}`}>
+                        {isComplete ? '✓' : `of ${expected}`}
+                    </span>
+                )}
+            </div>
+        </div>
     );
 }
