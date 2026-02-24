@@ -25,3 +25,4 @@ pnpm-debug.log*
 # prisma
 *.db
 *.db-journal
+village_eng.pdf
