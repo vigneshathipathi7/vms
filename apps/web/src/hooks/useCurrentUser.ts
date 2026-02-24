@@ -19,6 +19,9 @@ export function useCurrentUser() {
     user: query.data?.user ?? null,
     candidate: query.data?.candidate ?? null,
     electionType: query.data?.candidate?.electionType ?? null,
+    electionLevel: query.data?.user?.electionLevel ?? null,
+    district: query.data?.candidate?.district ?? null,
+    constituency: query.data?.candidate?.constituency ?? null,
     isUnauthorized: query.error instanceof ApiError && query.error.status === 401,
   };
 }

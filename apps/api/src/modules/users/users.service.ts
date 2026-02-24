@@ -25,6 +25,8 @@ const ADMIN_PROFILE_FIELDS = new Set<keyof UpdateProfileDto>([
   'partyName',
   'profilePhoto',
   'bio',
+  'talukId',
+  'villageId',
 ]);
 const SUB_USER_PROFILE_FIELDS = new Set<keyof UpdateProfileDto>([
   'fullName',
@@ -287,12 +289,36 @@ export class UsersService {
     if (!profile) {
       throw new NotFoundException('User not found');
     }
+    
+    // For ADMIN users, also fetch Candidate-level talukId/villageId
+    if (profile.role === 'ADMIN') {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          candidate: {
+            select: {
+              talukId: true,
+              villageId: true,
+            },
+          },
+        },
+      });
+      return { 
+        item: {
+          ...profile,
+          talukId: user?.candidate?.talukId ?? null,
+          villageId: user?.candidate?.villageId ?? null,
+        },
+      };
+    }
+    
     return { item: profile };
   }
 
   async updateProfile(payload: UpdateProfileDto, actor: AuthenticatedUser) {
     const allowedFields = actor.role === 'ADMIN' ? ADMIN_PROFILE_FIELDS : SUB_USER_PROFILE_FIELDS;
     const updates: Partial<Record<ProfileColumn, string | null>> = {};
+    const candidateUpdates: { talukId?: string | null; villageId?: string | null } = {};
     const keys = Object.keys(payload) as (keyof UpdateProfileDto)[];
 
     for (const key of keys) {
@@ -305,15 +331,31 @@ export class UsersService {
         throw new ForbiddenException(`Field "${key}" cannot be updated for your role`);
       }
 
-      updates[key] = this.normalizeOptionalText(value);
+      // Handle Candidate-level fields separately
+      if (key === 'talukId' || key === 'villageId') {
+        candidateUpdates[key] = this.normalizeOptionalText(value) ?? null;
+      } else {
+        updates[key] = this.normalizeOptionalText(value);
+      }
     }
 
-    if (Object.keys(updates).length === 0) {
+    if (Object.keys(updates).length === 0 && Object.keys(candidateUpdates).length === 0) {
       return this.getProfile(actor.id);
     }
 
     try {
-      await this.applyProfileColumns(actor.id, updates);
+      // Update User fields
+      if (Object.keys(updates).length > 0) {
+        await this.applyProfileColumns(actor.id, updates);
+      }
+      
+      // Update Candidate fields for panchayat elections (ADMIN only)
+      if (Object.keys(candidateUpdates).length > 0 && actor.role === 'ADMIN') {
+        await this.prisma.candidate.update({
+          where: { id: actor.candidateId },
+          data: candidateUpdates,
+        });
+      }
     } catch (error) {
       if (this.isEmailConflict(error)) {
         throw new ConflictException('Email already exists');

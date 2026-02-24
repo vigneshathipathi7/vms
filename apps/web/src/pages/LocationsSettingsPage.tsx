@@ -27,6 +27,9 @@ export function LocationsSettingsPage() {
     return (
         <section className="mx-auto max-w-2xl space-y-6">
             <div>
+                <div className="mb-3 inline-flex rounded-xl bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+                    Master Dataset
+                </div>
                 <h2 className="text-2xl font-semibold">Location Data</h2>
                 <p className="mt-1 text-sm text-slate-600">
                     Tamil Nadu geographic master data. This data is read-only and managed by the system administrator.
@@ -34,7 +37,7 @@ export function LocationsSettingsPage() {
             </div>
 
             {/* Read-Only Notice */}
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
                 <div className="flex items-start gap-3">
                     <svg className="h-5 w-5 text-amber-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m4-10V5a2 2 0 00-2-2H8a2 2 0 00-2 2v2m10 0h2a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V9a2 2 0 012-2h2" />
@@ -50,7 +53,7 @@ export function LocationsSettingsPage() {
             </div>
 
             {/* Statistics */}
-            <div className="rounded-xl border bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-4 text-lg font-medium text-slate-900">Data Summary</h3>
                 
                 {statsQuery.isLoading ? (
@@ -62,7 +65,7 @@ export function LocationsSettingsPage() {
                 ) : statsQuery.error ? (
                     <p className="text-red-600 text-sm">Failed to load statistics</p>
                 ) : stats ? (
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <StatCard label="Districts" value={stats.districts} expected={38} />
                         <StatCard label="Taluks" value={stats.taluks} expected={226} />
                         <StatCard label="Villages" value={stats.villages} />
@@ -74,7 +77,7 @@ export function LocationsSettingsPage() {
             </div>
 
             {/* Data Source */}
-            <div className="rounded-xl border bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-3 text-lg font-medium text-slate-900">Data Source</h3>
                 <ul className="space-y-2 text-sm text-slate-600">
                     <li className="flex items-center gap-2">
@@ -99,7 +102,7 @@ function StatCard({ label, value, expected }: { label: string; value: number; ex
     const isComplete = expected ? value >= expected : true;
     
     return (
-        <div className="rounded-lg border bg-slate-50 p-4">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
             <div className="mt-1 flex items-baseline gap-2">
                 <span className="text-2xl font-bold text-slate-900">{value.toLocaleString()}</span>

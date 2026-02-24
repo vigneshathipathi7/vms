@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { useCurrentUser } from './hooks/useCurrentUser';
 import { useSessionTimeout } from './hooks/useSessionTimeout';
@@ -16,6 +17,7 @@ import { VotedPage } from './pages/VotedPage';
 import { ZoneDetailsPage } from './pages/ZoneDetailsPage';
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { TermsOfServicePage } from './pages/TermsOfServicePage';
+import { UsagePage } from './pages/UsagePage';
 
 function ProtectedRoute({
   isLoading,
@@ -23,7 +25,7 @@ function ProtectedRoute({
   children,
 }: {
   isLoading: boolean;
-  user: { role: 'ADMIN' | 'SUB_USER' } | null;
+  user: { role: 'SUPER_ADMIN' | 'ADMIN' | 'SUB_USER' } | null;
   children: JSX.Element;
 }) {
   if (isLoading) {
@@ -43,7 +45,7 @@ function AdminRoute({
   children,
 }: {
   isLoading: boolean;
-  user: { role: 'ADMIN' | 'SUB_USER' } | null;
+  user: { role: 'SUPER_ADMIN' | 'ADMIN' | 'SUB_USER' } | null;
   children: JSX.Element;
 }) {
   if (isLoading) {
@@ -54,7 +56,7 @@ function AdminRoute({
     return <Navigate to="/login" replace />;
   }
 
-  if (user.role !== 'ADMIN') {
+  if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
     return <p className="text-sm text-red-600">Admin access required.</p>;
   }
 
@@ -67,7 +69,7 @@ function SubUserRoute({
   children,
 }: {
   isLoading: boolean;
-  user: { role: 'ADMIN' | 'SUB_USER' } | null;
+  user: { role: 'SUPER_ADMIN' | 'ADMIN' | 'SUB_USER' } | null;
   children: JSX.Element;
 }) {
   if (isLoading) {
@@ -89,6 +91,7 @@ export default function App() {
   const auth = useCurrentUser();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Initialize session timeout (15 minutes of inactivity)
   // Only activate when user is authenticated
@@ -107,58 +110,78 @@ export default function App() {
       queryClient.setQueryData(['auth', 'me'], undefined);
       await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
       navigate('/login', { replace: true });
+      setMenuOpen(false);
     }
   }
 
+  const navLinkClass =
+    'rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900';
+
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
-      <header className="border-b bg-white">
-        <nav className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-6 py-4">
-          <h1 className="mr-2 text-lg font-semibold">Voter Management System</h1>
+    <div className="min-h-screen text-slate-900">
+      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur">
+        <nav className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500" />
+            <h1 className="text-base font-semibold sm:text-lg">Voter Management System</h1>
+          </div>
+
+          {auth.user && (
+            <button
+              className="inline-flex items-center rounded-lg border border-slate-300 px-3 py-2 text-sm md:hidden"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              type="button"
+            >
+              {menuOpen ? 'Close' : 'Menu'}
+            </button>
+          )}
 
           {auth.user ? (
-            <>
-              <Link className="text-sm text-blue-700" to="/profile">
-                Profile
-              </Link>
-              <Link className="text-sm text-blue-700" to="/dashboard">
+            <div className="hidden items-center gap-1 md:flex">
+              <Link className={navLinkClass} to="/dashboard">
                 Dashboard
               </Link>
-              <Link className="text-sm text-blue-700" to="/entry">
+              <Link className={navLinkClass} to="/analytics">
+                Analytics
+              </Link>
+              <Link className={navLinkClass} to="/usage">
+                Usage
+              </Link>
+              <Link className={navLinkClass} to="/entry">
                 Data Entry
               </Link>
-              <Link className="text-sm text-blue-700" to="/voted">
+              <Link className={navLinkClass} to="/voted">
                 Voted
               </Link>
               {auth.user.role === 'ADMIN' && (
                 <>
-                  <Link className="text-sm text-blue-700" to="/sub-users">
+                  <Link className={navLinkClass} to="/profile">
+                    Profile
+                  </Link>
+                  <Link className={navLinkClass} to="/sub-users">
                     Sub-users
                   </Link>
-                  <Link className="text-sm text-blue-700" to="/audit">
+                  <Link className={navLinkClass} to="/audit">
                     Audit
-                  </Link>
-                  <Link className="text-sm text-blue-700" to="/analytics">
-                    Analytics
                   </Link>
                 </>
               )}
               <button
-                className="ml-auto rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white disabled:opacity-60"
+                className="ml-2 rounded-lg bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-60"
                 onClick={handleLogout}
                 type="button"
                 disabled={logoutMutation.isPending}
               >
                 {logoutMutation.isPending ? 'Logging out...' : `Logout (${auth.user.username})`}
               </button>
-            </>
+            </div>
           ) : (
-            <div className="ml-auto flex items-center gap-4">
-              <Link className="text-sm text-blue-700" to="/login">
+            <div className="ml-auto flex items-center gap-2">
+              <Link className="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100" to="/login">
                 Login
               </Link>
               <Link
-                className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white"
+                className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white"
                 to="/signup"
               >
                 Request Access
@@ -166,15 +189,42 @@ export default function App() {
             </div>
           )}
         </nav>
+
+        {auth.user && menuOpen && (
+          <div className="border-t border-slate-200 bg-white px-4 py-3 md:hidden">
+            <div className="grid grid-cols-2 gap-2">
+              <Link className={navLinkClass} onClick={() => setMenuOpen(false)} to="/dashboard">Dashboard</Link>
+              <Link className={navLinkClass} onClick={() => setMenuOpen(false)} to="/analytics">Analytics</Link>
+              <Link className={navLinkClass} onClick={() => setMenuOpen(false)} to="/usage">Usage</Link>
+              <Link className={navLinkClass} onClick={() => setMenuOpen(false)} to="/entry">Data Entry</Link>
+              <Link className={navLinkClass} onClick={() => setMenuOpen(false)} to="/voted">Voted</Link>
+              {auth.user.role === 'ADMIN' && (
+                <>
+                  <Link className={navLinkClass} onClick={() => setMenuOpen(false)} to="/profile">Profile</Link>
+                  <Link className={navLinkClass} onClick={() => setMenuOpen(false)} to="/sub-users">Sub-users</Link>
+                  <Link className={navLinkClass} onClick={() => setMenuOpen(false)} to="/audit">Audit</Link>
+                </>
+              )}
+            </div>
+            <button
+              className="mt-3 w-full rounded-lg bg-slate-900 px-3 py-2 text-sm text-white disabled:opacity-60"
+              onClick={handleLogout}
+              type="button"
+              disabled={logoutMutation.isPending}
+            >
+              {logoutMutation.isPending ? 'Logging out...' : `Logout (${auth.user.username})`}
+            </button>
+          </div>
+        )}
       </header>
 
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-8">
         <Routes>
           <Route
             path="/"
             element={
               <ProtectedRoute isLoading={auth.isLoading} user={auth.user}>
-                <Navigate to="/profile" replace />
+                <Navigate to="/dashboard" replace />
               </ProtectedRoute>
             }
           />
@@ -186,6 +236,14 @@ export default function App() {
               <ProtectedRoute isLoading={auth.isLoading} user={auth.user}>
                 <DashboardPage />
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/usage"
+            element={
+              <AdminRoute isLoading={auth.isLoading} user={auth.user}>
+                <UsagePage />
+              </AdminRoute>
             }
           />
           <Route

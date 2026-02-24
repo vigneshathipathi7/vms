@@ -39,18 +39,21 @@ export class LocationsController {
   }
 
   /**
-   * Get taluks list - flat, optionally filtered (SHARED globally).
+   * Get taluks list - flat, optionally filtered by ids, district, or type (SHARED globally).
    */
   @Get('taluks/list')
   getTaluks(
     @Query('ids') ids: string | undefined,
+    @Query('districtName') districtName: string | undefined,
+    @Query('isLgdBlock') isLgdBlock: string | undefined,
     @CurrentUser() user: AuthenticatedUser | undefined,
   ) {
     if (!user) {
       throw new UnauthorizedException('Unauthenticated');
     }
     const talukIds = ids ? ids.split(',').filter(Boolean) : undefined;
-    return this.locationsService.getTaluks(talukIds);
+    const isLgdBlockBool = isLgdBlock === 'true' ? true : isLgdBlock === 'false' ? false : undefined;
+    return this.locationsService.getTaluks({ assignedTalukIds: talukIds, districtName, isLgdBlock: isLgdBlockBool });
   }
 
   /**

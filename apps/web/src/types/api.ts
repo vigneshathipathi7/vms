@@ -1,4 +1,4 @@
-export type UserRole = 'ADMIN' | 'SUB_USER';
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'SUB_USER';
 
 export type ElectionType = 'LOCAL_BODY' | 'ASSEMBLY' | 'PARLIAMENT';
 
@@ -25,6 +25,7 @@ export interface AuthUser {
   role: UserRole;
   mfaEnabled: boolean;
   candidateId: string;
+  electionLevel: string | null;
 }
 
 export interface LoginPayload {
@@ -54,7 +55,7 @@ export interface CandidateInfo {
 
 export interface MeResponse {
   user: AuthUser;
-  candidate: CandidateInfo;
+  candidate: CandidateInfo | null;
 }
 
 export interface ZoneSummary {
@@ -187,6 +188,8 @@ export interface UserProfile {
   managedWardId: string | null;
   managedVillage: { id: string; name: string } | null;
   managedWard: { id: string; wardNumber: string } | null;
+  talukId: string | null;
+  villageId: string | null;
   createdAt: string;
   updatedAt: string;
 }

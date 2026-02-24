@@ -21,7 +21,7 @@ import { AuthenticatedUser } from '../auth/types/auth.types';
 
 @Controller('usage')
 @UseGuards(AuthCookieGuard, RolesGuard)
-@Roles('ADMIN')
+@Roles('ADMIN', 'SUPER_ADMIN')
 export class UsageController {
   constructor(private readonly usageService: UsageService) {}
 

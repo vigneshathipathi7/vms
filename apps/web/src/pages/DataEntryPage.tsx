@@ -22,7 +22,7 @@ const INITIAL_FORM = {
 
 export function DataEntryPage() {
   const queryClient = useQueryClient();
-  const { electionType } = useCurrentUser();
+  const { electionType, electionLevel, district } = useCurrentUser();
   const [form, setForm] = useState(INITIAL_FORM);
   const [page, setPage] = useState(1);
 
@@ -32,10 +32,16 @@ export function DataEntryPage() {
     [electionType]
   );
 
-  // Fetch taluks list (for LOCAL_BODY)
+  // Fetch taluks list (for LOCAL_BODY), filtered by candidate's district
+  // For LOCAL_BODY elections, fetch LGD blocks (which have villages)
   const taluksQuery = useQuery({
-    queryKey: ['locations', 'taluks', 'list'],
-    queryFn: () => apiFetch<Taluk[]>('/locations/taluks/list'),
+    queryKey: ['locations', 'taluks', 'list', district, electionType],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (district) params.set('districtName', district);
+      const queryString = params.toString();
+      return apiFetch<Taluk[]>(`/locations/taluks/list${queryString ? `?${queryString}` : ''}`);
+    },
     enabled: hierarchyConfig.showTaluk,
   });
 
@@ -139,35 +145,38 @@ export function DataEntryPage() {
   return (
     <section className="space-y-6">
       <div>
+        <div className="mb-3 inline-flex rounded-xl bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+          Field Operations
+        </div>
         <h2 className="text-2xl font-semibold">Centralized Data Entry</h2>
         <p className="mt-1 text-sm text-slate-600">
           Add voters to any zone from one screen.
-          {electionType && (
+          {electionLevel && (
             <span className="ml-2 rounded bg-slate-100 px-2 py-0.5 text-xs font-medium">
-              {electionType.replace('_', ' ')}
+              {electionLevel}
             </span>
           )}
         </p>
       </div>
 
-      <form className="grid gap-3 rounded-xl border bg-white p-4 md:grid-cols-3" onSubmit={onSubmit}>
+      <form className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-3" onSubmit={onSubmit}>
         {/* Row 1: Name, Contact, Voter ID */}
         <input
-          className="rounded-md border px-3 py-2 text-sm"
+          className="rounded-xl border px-3 py-2.5 text-sm"
           placeholder="Name"
           value={form.name}
           onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
           required
         />
         <input
-          className="rounded-md border px-3 py-2 text-sm"
+          className="rounded-xl border px-3 py-2.5 text-sm"
           placeholder="Contact"
           value={form.contactNumber}
           onChange={(event) => setForm((prev) => ({ ...prev, contactNumber: event.target.value }))}
           required
         />
         <input
-          className="rounded-md border px-3 py-2 text-sm"
+          className="rounded-xl border px-3 py-2.5 text-sm"
           placeholder="Voter ID"
           value={form.voterId}
           onChange={(event) => setForm((prev) => ({ ...prev, voterId: event.target.value }))}
@@ -179,7 +188,7 @@ export function DataEntryPage() {
         {/* State dropdown - for PARLIAMENT */}
         {hierarchyConfig.showState && (
           <input
-            className="rounded-md border px-3 py-2 text-sm"
+            className="rounded-xl border px-3 py-2.5 text-sm"
             placeholder={hierarchyConfig.stateLabel}
             value={form.state}
             onChange={(event) => setForm((prev) => ({ ...prev, state: event.target.value }))}
@@ -190,7 +199,7 @@ export function DataEntryPage() {
         {/* Constituency dropdown - for ASSEMBLY and PARLIAMENT */}
         {hierarchyConfig.showConstituency && (
           <input
-            className="rounded-md border px-3 py-2 text-sm"
+            className="rounded-xl border px-3 py-2.5 text-sm"
             placeholder={hierarchyConfig.constituencyLabel}
             value={form.constituency}
             onChange={(event) => setForm((prev) => ({ ...prev, constituency: event.target.value }))}
@@ -201,7 +210,7 @@ export function DataEntryPage() {
         {/* Assembly Constituency - for PARLIAMENT */}
         {hierarchyConfig.showAssemblyConstituency && (
           <input
-            className="rounded-md border px-3 py-2 text-sm"
+            className="rounded-xl border px-3 py-2.5 text-sm"
             placeholder="Assembly Constituency"
             value={form.assemblyConstituency}
             onChange={(event) => setForm((prev) => ({ ...prev, assemblyConstituency: event.target.value }))}
@@ -212,7 +221,7 @@ export function DataEntryPage() {
         {/* Taluk, Village, Ward cascading dropdowns - for LOCAL_BODY */}
         {hierarchyConfig.showTaluk && (
           <select
-            className="rounded-md border px-3 py-2 text-sm"
+            className="rounded-xl border px-3 py-2.5 text-sm"
             value={form.talukId}
             onChange={handleTalukChange}
             required
@@ -228,7 +237,7 @@ export function DataEntryPage() {
 
         {hierarchyConfig.showVillage && (
           <select
-            className="rounded-md border px-3 py-2 text-sm"
+            className="rounded-xl border px-3 py-2.5 text-sm"
             value={form.villageId}
             onChange={handleVillageChange}
             required
@@ -246,7 +255,7 @@ export function DataEntryPage() {
         {/* Ward dropdown - always shown */}
         {hierarchyConfig.showVillage ? (
           <select
-            className="rounded-md border px-3 py-2 text-sm"
+            className="rounded-xl border px-3 py-2.5 text-sm"
             value={form.wardId}
             onChange={(event) => setForm((prev) => ({ ...prev, wardId: event.target.value }))}
             required
@@ -271,14 +280,14 @@ export function DataEntryPage() {
 
         {/* Row 3: Address, Zone, Submit */}
         <input
-          className="rounded-md border px-3 py-2 text-sm"
+          className="rounded-xl border px-3 py-2.5 text-sm"
           placeholder="Address"
           value={form.address}
           onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))}
           required
         />
         <select
-          className="rounded-md border px-3 py-2 text-sm"
+          className="rounded-xl border px-3 py-2.5 text-sm"
           value={form.zoneId}
           onChange={(event) => setForm((prev) => ({ ...prev, zoneId: event.target.value }))}
           required
@@ -292,7 +301,7 @@ export function DataEntryPage() {
         </select>
 
         <button
-          className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+          className="rounded-xl bg-slate-900 px-3 py-2.5 text-sm font-medium text-white disabled:opacity-60"
           type="submit"
           disabled={createMutation.isPending}
         >
@@ -305,7 +314,7 @@ export function DataEntryPage() {
       ) : votersQuery.isError || !votersQuery.data ? (
         <p className="text-sm text-red-600">Failed to load recent entries.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border bg-white p-4">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <h3 className="mb-3 text-base font-semibold">Recent entries</h3>
           <table className="min-w-full text-left text-sm">
             <thead>
@@ -350,7 +359,7 @@ export function DataEntryPage() {
             </p>
             <div className="flex gap-2">
               <button
-                className="rounded-md border px-3 py-1 text-sm disabled:opacity-60"
+                className="rounded-xl border px-3 py-1.5 text-sm disabled:opacity-60"
                 type="button"
                 disabled={votersQuery.data.pagination.page <= 1}
                 onClick={() => setPage((prev) => Math.max(1, prev - 1))}
@@ -358,7 +367,7 @@ export function DataEntryPage() {
                 Prev
               </button>
               <button
-                className="rounded-md border px-3 py-1 text-sm disabled:opacity-60"
+                className="rounded-xl border px-3 py-1.5 text-sm disabled:opacity-60"
                 type="button"
                 disabled={votersQuery.data.pagination.page >= votersQuery.data.pagination.totalPages}
                 onClick={() => setPage((prev) => prev + 1)}

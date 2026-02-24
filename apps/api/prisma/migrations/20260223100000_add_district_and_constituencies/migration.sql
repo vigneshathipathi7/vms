@@ -5,13 +5,16 @@
 CREATE TABLE IF NOT EXISTS "District" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "lgdCode" TEXT,
     "stateCode" TEXT NOT NULL DEFAULT 'TN',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "District_pkey" PRIMARY KEY ("id")
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "District_name_key" ON "District"("name");
+CREATE UNIQUE INDEX IF NOT EXISTS "District_lgdCode_key" ON "District"("lgdCode");
 CREATE INDEX IF NOT EXISTS "District_stateCode_idx" ON "District"("stateCode");
+CREATE INDEX IF NOT EXISTS "District_lgdCode_idx" ON "District"("lgdCode");
 
 -- Step 2: Create Parliamentary Constituency table
 CREATE TABLE IF NOT EXISTS "ParliamentaryConstituency" (

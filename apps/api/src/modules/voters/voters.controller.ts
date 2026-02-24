@@ -66,7 +66,7 @@ export class VotersController {
 
   // CSV export rate limited to 5 per minute
   @Get('export.csv')
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'SUPER_ADMIN')
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   async exportCsv(
     @Query() query: ListVotersQueryDto,
@@ -125,7 +125,7 @@ export class VotersController {
   }
 
   @Post('bulk/move-zone')
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'SUPER_ADMIN')
   bulkMoveZone(
     @Body() body: BulkMoveZoneDto,
     @CurrentUser() user: AuthenticatedUser | undefined,
@@ -137,7 +137,7 @@ export class VotersController {
   }
 
   @Post('bulk/delete')
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'SUPER_ADMIN')
   bulkDelete(@Body() body: BulkDeleteDto, @CurrentUser() user: AuthenticatedUser | undefined) {
     if (!user) {
       throw new UnauthorizedException('Unauthenticated');

@@ -29,9 +29,10 @@ export class LocationsService {
    * 
    * @param options.assignedTalukIds - Filter to specific taluks
    * @param options.isLgdBlock - true = LGD Blocks, false = Revenue Taluks, undefined = all
+   * @param options.districtName - Filter to specific district by name
    */
-  async getTaluks(options?: { assignedTalukIds?: string[]; isLgdBlock?: boolean }) {
-    const where: { id?: { in: string[] }; isLgdBlock?: boolean } = {};
+  async getTaluks(options?: { assignedTalukIds?: string[]; isLgdBlock?: boolean; districtName?: string }) {
+    const where: { id?: { in: string[] }; isLgdBlock?: boolean; district?: { name: string } } = {};
     
     if (options?.assignedTalukIds?.length) {
       where.id = { in: options.assignedTalukIds };
@@ -39,6 +40,10 @@ export class LocationsService {
     
     if (options?.isLgdBlock !== undefined) {
       where.isLgdBlock = options.isLgdBlock;
+    }
+
+    if (options?.districtName) {
+      where.district = { name: options.districtName };
     }
 
     return this.prisma.taluk.findMany({

@@ -233,7 +233,7 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
 
   if (submitted) {
     return (
-      <section className="mx-auto max-w-lg rounded-xl border bg-white p-8 shadow-sm">
+      <section className="mx-auto max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
             <svg
@@ -260,7 +260,7 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
           </p>
           <Link
             to="/login"
-            className="mt-6 inline-block rounded-md bg-slate-900 px-6 py-2 text-sm font-medium text-white"
+            className="mt-6 inline-block rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-medium text-white"
           >
             Back to Login
           </Link>
@@ -270,7 +270,10 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
   }
 
   return (
-    <section className="mx-auto max-w-2xl rounded-xl border bg-white p-6 shadow-sm">
+    <section className="mx-auto max-w-2xl rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+      <div className="mb-4 inline-flex rounded-xl bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+        Access Request
+      </div>
       <h2 className="text-2xl font-semibold">Request Access</h2>
       <p className="mt-2 text-sm text-slate-600">
         Fill in your details below to request access to the Voter Management System. Once approved,
@@ -278,7 +281,7 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
       </p>
 
       {errorMessage && (
-        <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{errorMessage}</p>
+        <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{errorMessage}</p>
       )}
 
       <form className="mt-6 space-y-6" onSubmit={onSubmit}>
@@ -291,7 +294,7 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
             <label className="block">
               <span className="mb-1 block text-sm">Full Name *</span>
               <input
-                className="w-full rounded-md border px-3 py-2"
+                className="w-full rounded-xl border px-3 py-2.5"
                 type="text"
                 value={formData.fullName}
                 onChange={(e) => handleChange('fullName', e.target.value)}
@@ -302,7 +305,7 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
             <label className="block">
               <span className="mb-1 block text-sm">Phone Number *</span>
               <input
-                className="w-full rounded-md border px-3 py-2"
+                className="w-full rounded-xl border px-3 py-2.5"
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => handleChange('phone', e.target.value)}
@@ -313,7 +316,7 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
             <label className="block sm:col-span-2">
               <span className="mb-1 block text-sm">Email Address *</span>
               <input
-                className="w-full rounded-md border px-3 py-2"
+                className="w-full rounded-xl border px-3 py-2.5"
                 type="email"
                 value={formData.email}
                 onChange={(e) => handleChange('email', e.target.value)}
@@ -332,7 +335,7 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
           <label className="block">
             <span className="mb-1 block text-sm">Select Election Type *</span>
             <select
-              className="w-full rounded-md border px-3 py-2"
+              className="w-full rounded-xl border px-3 py-2.5"
               value={formData.electionType}
               onChange={(e) => handleChange('electionType', e.target.value as ElectionType)}
               required
@@ -359,7 +362,7 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
                 <label className="block">
                   <span className="mb-1 block text-sm">{hierarchyConfig.stateLabel} *</span>
                   <select
-                    className="w-full rounded-md border px-3 py-2"
+                    className="w-full rounded-xl border px-3 py-2.5"
                     value={formData.state}
                     onChange={(e) => handleChange('state', e.target.value)}
                     required
@@ -379,7 +382,7 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
                 <label className="block">
                   <span className="mb-1 block text-sm">District *</span>
                   <select
-                    className="w-full rounded-md border px-3 py-2"
+                    className="w-full rounded-xl border px-3 py-2.5"
                     value={formData.district}
                     onChange={(e) => handleChange('district', e.target.value)}
                     required
@@ -399,7 +402,7 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
                 <label className="block">
                   <span className="mb-1 block text-sm">Taluk/ULB *</span>
                   <select
-                    className="w-full rounded-md border px-3 py-2"
+                    className="w-full rounded-xl border px-3 py-2.5"
                     value={formData.taluk}
                     onChange={(e) => handleChange('taluk', e.target.value)}
                     required
@@ -419,7 +422,7 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
                 <label className="block">
                   <span className="mb-1 block text-sm">{hierarchyConfig.constituencyLabel} *</span>
                   <select
-                    className="w-full rounded-md border px-3 py-2"
+                    className="w-full rounded-xl border px-3 py-2.5"
                     value={formData.constituency}
                     onChange={(e) => handleChange('constituency', e.target.value)}
                     required
@@ -439,7 +442,7 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
                 <label className="block">
                   <span className="mb-1 block text-sm">{hierarchyConfig.constituencyLabel} *</span>
                   <select
-                    className="w-full rounded-md border px-3 py-2"
+                    className="w-full rounded-xl border px-3 py-2.5"
                     value={formData.constituency}
                     onChange={(e) => handleChange('constituency', e.target.value)}
                     required
@@ -466,7 +469,7 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
             <label className="block">
               <span className="mb-1 block text-sm">Contesting For *</span>
               <select
-                className="w-full rounded-md border px-3 py-2"
+                className="w-full rounded-xl border px-3 py-2.5"
                 value={formData.contestingFor}
                 onChange={(e) => handleChange('contestingFor', e.target.value)}
                 required
@@ -482,7 +485,7 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
             <label className="block">
               <span className="mb-1 block text-sm">Party Name</span>
               <input
-                className="w-full rounded-md border px-3 py-2"
+                className="w-full rounded-xl border px-3 py-2.5"
                 type="text"
                 value={formData.partyName}
                 onChange={(e) => handleChange('partyName', e.target.value)}
@@ -497,7 +500,7 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
           <label className="block">
             <span className="mb-1 block text-sm">Why do you need access?</span>
             <textarea
-              className="w-full rounded-md border px-3 py-2"
+              className="w-full rounded-xl border px-3 py-2.5"
               rows={3}
               value={formData.reason}
               onChange={(e) => handleChange('reason', e.target.value)}
@@ -506,12 +509,12 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
           </label>
         </div>
 
-        <div className="flex items-center justify-between pt-4">
+        <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
           <Link to="/login" className="text-sm text-slate-600 hover:text-slate-900">
             Already have credentials? Login
           </Link>
           <button
-            className="rounded-md bg-slate-900 px-6 py-2 text-sm font-medium text-white disabled:opacity-50"
+            className="w-full rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-medium text-white disabled:opacity-50 sm:w-auto"
             type="submit"
             disabled={signupMutation.isPending}
           >

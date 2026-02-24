@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -29,6 +30,7 @@ import {
 
 const AUDIT_LOGIN_FAILED = 'USER_LOGIN_FAILED';
 const AUDIT_LOGIN_SUCCESS = 'USER_LOGIN_SUCCESS';
+const AUDIT_SUPER_ADMIN_LOGIN = 'SUPER_ADMIN_LOGIN';
 
 @Injectable()
 export class AuthService {
@@ -64,6 +66,14 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    if (!user.isActive) {
+      throw new UnauthorizedException('Account is disabled');
+    }
+
+    if (!user.passwordHash) {
+      throw new UnauthorizedException('Password setup is pending');
+    }
+
     const isValidPassword = await argon2.verify(user.passwordHash, payload.password);
 
     if (!isValidPassword) {
@@ -72,7 +82,7 @@ export class AuthService {
         action: AUDIT_LOGIN_FAILED,
         entityType: 'User',
         entityId: user.id,
-        candidateId: user.candidateId,
+        candidateId: user.candidateId ?? undefined,
         metadata: {
           ip: requestMeta.ip,
           userAgent: requestMeta.userAgent,
@@ -89,12 +99,25 @@ export class AuthService {
       action: AUDIT_LOGIN_SUCCESS,
       entityType: 'User',
       entityId: user.id,
-      candidateId: user.candidateId,
+      candidateId: user.candidateId ?? undefined,
       metadata: {
         ip: requestMeta.ip,
         userAgent: requestMeta.userAgent,
       },
     });
+
+    if (user.role === 'SUPER_ADMIN') {
+      await this.auditService.logEvent({
+        actorUserId: user.id,
+        action: AUDIT_SUPER_ADMIN_LOGIN,
+        entityType: 'User',
+        entityId: user.id,
+        metadata: {
+          ip: requestMeta.ip,
+          userAgent: requestMeta.userAgent,
+        },
+      });
+    }
 
     return {
       mfaRequired: false,
@@ -146,7 +169,7 @@ export class AuthService {
         action: 'REFRESH_TOKEN_REUSE_DETECTED',
         entityType: 'User',
         entityId: payload.sub,
-        candidateId: payload.candidateId,
+        candidateId: payload.candidateId ?? undefined,
         metadata: {
           reason: 'token_not_found',
           ip: requestMeta?.ip,
@@ -171,7 +194,7 @@ export class AuthService {
         action: 'REFRESH_TOKEN_REUSE_DETECTED',
         entityType: 'User',
         entityId: payload.sub,
-        candidateId: storedToken.candidateId,
+        candidateId: storedToken.candidateId ?? undefined,
         metadata: {
           reason: 'token_already_revoked',
           revokedAt: storedToken.revokedAt.toISOString(),
@@ -201,7 +224,7 @@ export class AuthService {
         action: 'REFRESH_TOKEN_REUSE_DETECTED',
         entityType: 'User',
         entityId: payload.sub,
-        candidateId: storedToken.candidateId,
+        candidateId: storedToken.candidateId ?? undefined,
         metadata: {
           reason: 'token_expired',
           expiresAt: storedToken.expiresAt.toISOString(),
@@ -299,6 +322,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid access token');
     }
 
+    if (!user.isActive) {
+      throw new UnauthorizedException('Account is disabled');
+    }
+
     return {
       user: this.toAuthenticatedUser(user),
       candidate: user.candidate,
@@ -321,7 +348,7 @@ export class AuthService {
   }
 
   private async issueSessionForUser(
-    user: { id: string; username: string; role: UserRoleValue; mfaEnabled: boolean; candidateId: string },
+    user: { id: string; username: string; role: UserRoleValue; mfaEnabled: boolean; candidateId: string | null },
     res: Response,
   ) {
     const tokens = await this.issueSessionTokens(this.toAuthenticatedUser(user));
@@ -330,11 +357,15 @@ export class AuthService {
   }
 
   private async issueSessionTokens(user: AuthenticatedUser) {
+    const normalizedCandidateId = user.candidateId && user.candidateId.trim().length > 0
+      ? user.candidateId
+      : null;
+
     const accessTokenPayload: AccessTokenPayload = {
       sub: user.id,
       username: user.username,
       role: user.role,
-      candidateId: user.candidateId,
+      candidateId: normalizedCandidateId,
     };
 
     const refreshTokenPayload: RefreshTokenPayload = {
@@ -360,7 +391,7 @@ export class AuthService {
     await this.prisma.refreshToken.create({
       data: {
         userId: user.id,
-        candidateId: user.candidateId,
+        candidateId: normalizedCandidateId,
         tokenHash: this.hashToken(refreshToken),
         expiresAt: refreshExpiresAt,
       },
@@ -403,25 +434,28 @@ export class AuthService {
     username: string;
     role: UserRoleValue;
     mfaEnabled: boolean;
-    candidateId: string;
+    candidateId: string | null;
+    electionLevel?: string | null;
   }): AuthenticatedUser {
     return {
       id: user.id,
       username: user.username,
       role: user.role,
       mfaEnabled: user.mfaEnabled,
-      candidateId: user.candidateId,
+      candidateId: user.candidateId ?? '',
+      electionLevel: user.electionLevel ?? null,
     };
   }
 
   private setAuthCookies(res: Response, accessToken: string, refreshToken: string) {
     const cookieDomain = this.getCookieDomain();
     const secure = this.getCookieSecure();
+    const sameSite = this.getCookieSameSite();
 
     res.cookie(ACCESS_COOKIE_NAME, accessToken, {
       httpOnly: true,
       secure,
-      sameSite: 'strict',
+      sameSite,
       domain: cookieDomain,
       path: '/',
       maxAge: this.getAccessTtlMinutes() * 60 * 1000,
@@ -430,7 +464,7 @@ export class AuthService {
     res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
       httpOnly: true,
       secure,
-      sameSite: 'strict',
+      sameSite,
       domain: cookieDomain,
       path: '/',
       maxAge: this.getRefreshTtlDays() * 24 * 60 * 60 * 1000,
@@ -440,11 +474,12 @@ export class AuthService {
   private setTrustedDeviceCookie(res: Response, trustedDeviceToken: string) {
     const cookieDomain = this.getCookieDomain();
     const secure = this.getCookieSecure();
+    const sameSite = this.getCookieSameSite();
 
     res.cookie(TRUSTED_DEVICE_COOKIE_NAME, trustedDeviceToken, {
       httpOnly: true,
       secure,
-      sameSite: 'strict',
+      sameSite,
       domain: cookieDomain,
       path: '/',
       maxAge: this.getTrustedDeviceTtlDays() * 24 * 60 * 60 * 1000,
@@ -454,11 +489,12 @@ export class AuthService {
   private clearAuthCookies(res: Response) {
     const cookieDomain = this.getCookieDomain();
     const secure = this.getCookieSecure();
+    const sameSite = this.getCookieSameSite();
 
     res.clearCookie(ACCESS_COOKIE_NAME, {
       httpOnly: true,
       secure,
-      sameSite: 'strict',
+      sameSite,
       domain: cookieDomain,
       path: '/',
     });
@@ -466,7 +502,7 @@ export class AuthService {
     res.clearCookie(REFRESH_COOKIE_NAME, {
       httpOnly: true,
       secure,
-      sameSite: 'strict',
+      sameSite,
       domain: cookieDomain,
       path: '/',
     });
@@ -474,10 +510,17 @@ export class AuthService {
     res.clearCookie(TRUSTED_DEVICE_COOKIE_NAME, {
       httpOnly: true,
       secure,
-      sameSite: 'strict',
+      sameSite,
       domain: cookieDomain,
       path: '/',
     });
+  }
+
+  private getCookieSameSite(): 'lax' | 'strict' {
+    if (process.env.NODE_ENV === 'production') {
+      return 'strict';
+    }
+    return 'lax';
   }
 
   private async validateTrustedDevice(userId: string, token: string) {
@@ -578,7 +621,10 @@ export class AuthService {
   }
 
   private getCookieSecure() {
-    return this.configService.get<string>('COOKIE_SECURE') === 'true';
+    if (process.env.NODE_ENV === 'production') {
+      return true;
+    }
+    return false;
   }
 
   private getCookieDomain() {

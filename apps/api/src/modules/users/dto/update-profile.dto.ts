@@ -64,4 +64,13 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   managedWardId?: string;
+
+  // For panchayat-level elections (ADMIN only - updates Candidate)
+  @IsOptional()
+  @IsString()
+  talukId?: string;
+
+  @IsOptional()
+  @IsString()
+  villageId?: string;
 }

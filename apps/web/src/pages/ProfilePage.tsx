@@ -23,17 +23,20 @@ export function ProfilePage() {
     <section className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
+          <div className="mb-3 inline-flex rounded-xl bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+            Account Center
+          </div>
           <h2 className="text-2xl font-semibold">Profile</h2>
           <p className="mt-1 text-sm text-slate-600">
             Your profile details and quick actions.
           </p>
         </div>
-        <Link className="rounded-md border bg-slate-50 px-3 py-1.5 text-sm font-medium" to="/profile/edit">
+        <Link className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium" to="/profile/edit">
           Edit Profile
         </Link>
       </div>
 
-      <article className="rounded-xl border bg-white p-6 shadow-sm">
+      <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <dl className="grid gap-3 sm:grid-cols-2">
           <div>
             <dt className="text-xs uppercase tracking-wide text-slate-500">Username</dt>
@@ -66,16 +69,16 @@ export function ProfilePage() {
         </dl>
       </article>
 
-      <article className="rounded-xl border bg-white p-6 shadow-sm">
+      <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="text-lg font-semibold">Quick actions</h3>
         <div className="mt-4 flex flex-wrap gap-3">
-          <Link className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white" to="/entry">
+          <Link className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white" to="/entry">
             Data Entry
           </Link>
-          <Link className="rounded-md border px-4 py-2 text-sm font-medium" to="/dashboard">
+          <Link className="rounded-xl border px-4 py-2.5 text-sm font-medium" to="/dashboard">
             Dashboard
           </Link>
-          <Link className="rounded-md border px-4 py-2 text-sm font-medium" to="/voted">
+          <Link className="rounded-xl border px-4 py-2.5 text-sm font-medium" to="/voted">
             Voted List
           </Link>
         </div>

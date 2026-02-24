@@ -84,9 +84,7 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: isProduction
-      ? frontendOrigin
-      : [frontendOrigin, 'http://localhost:5173', 'http://localhost:3000'],
+    origin: frontendOrigin,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],

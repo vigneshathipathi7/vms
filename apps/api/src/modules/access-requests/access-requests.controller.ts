@@ -32,31 +32,31 @@ export class AccessRequestsController {
     return this.accessRequestsService.createRequest(body, ip);
   }
 
-  // Admin-only endpoints below
+  // SUPER_ADMIN-only endpoints below
   @Get()
   @UseGuards(AuthCookieGuard, RolesGuard)
-  @Roles('ADMIN')
+  @Roles('SUPER_ADMIN')
   listRequests(@Query('status') status?: string) {
     return this.accessRequestsService.listRequests(status);
   }
 
   @Get('stats')
   @UseGuards(AuthCookieGuard, RolesGuard)
-  @Roles('ADMIN')
+  @Roles('SUPER_ADMIN')
   getStats() {
     return this.accessRequestsService.getStats();
   }
 
   @Get(':id')
   @UseGuards(AuthCookieGuard, RolesGuard)
-  @Roles('ADMIN')
+  @Roles('SUPER_ADMIN')
   getRequest(@Param('id') id: string) {
     return this.accessRequestsService.getRequestById(id);
   }
 
   @Patch(':id')
   @UseGuards(AuthCookieGuard, RolesGuard)
-  @Roles('ADMIN')
+  @Roles('SUPER_ADMIN')
   updateRequest(
     @Param('id') id: string,
     @Body() body: UpdateAccessRequestDto,

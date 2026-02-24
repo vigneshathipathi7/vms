@@ -10,7 +10,7 @@ import { AuditService } from './audit.service';
 
 @Controller('audit')
 @UseGuards(AuthCookieGuard, RolesGuard)
-@Roles('ADMIN')
+@Roles('ADMIN', 'SUPER_ADMIN')
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}
 

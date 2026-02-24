@@ -58,17 +58,20 @@ export function LoginPage({ user }: { user: AuthUser | null }) {
   }
 
   return (
-    <section className="mx-auto max-w-md rounded-xl border bg-white p-6 shadow-sm">
-      <h2 className="text-xl font-semibold">Login</h2>
-      <p className="mt-2 text-sm text-slate-600">Use your email and password to continue.</p>
+    <section className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+      <div className="mb-4 inline-flex rounded-xl bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+        Secure Access
+      </div>
+      <h2 className="text-2xl font-semibold">Welcome back</h2>
+      <p className="mt-2 text-sm text-slate-600">Use your registered email and password to continue.</p>
 
-      {errorMessage && <p className="mt-4 rounded-md bg-red-50 p-2 text-sm text-red-700">{errorMessage}</p>}
+      {errorMessage && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{errorMessage}</p>}
 
       <form className="mt-6 space-y-4" onSubmit={onLoginSubmit}>
         <label className="block">
-          <span className="mb-1 block text-sm">Email</span>
+          <span className="mb-1 block text-sm font-medium">Email</span>
           <input
-            className="w-full rounded-md border px-3 py-2"
+            className="w-full rounded-xl border px-3 py-2.5"
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -78,9 +81,9 @@ export function LoginPage({ user }: { user: AuthUser | null }) {
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-sm">Password</span>
+          <span className="mb-1 block text-sm font-medium">Password</span>
           <input
-            className="w-full rounded-md border px-3 py-2"
+            className="w-full rounded-xl border px-3 py-2.5"
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -90,7 +93,7 @@ export function LoginPage({ user }: { user: AuthUser | null }) {
         </label>
 
         <button
-          className="w-full rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+          className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white"
           type="submit"
           disabled={loginMutation.isPending}
         >

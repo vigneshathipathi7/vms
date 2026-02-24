@@ -343,6 +343,9 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
   return (
     <section className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
+        <div className="inline-flex rounded-xl bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+          Zone Operations
+        </div>
         <h2 className="text-2xl font-semibold">{data.zone.name}</h2>
         <span
           className="rounded-full px-3 py-1 text-xs font-medium text-white"
@@ -355,11 +358,11 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
 
       {/* Filter Form */}
       <form
-        className="grid gap-3 rounded-xl border bg-white p-4 md:grid-cols-7"
+        className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-7"
         onSubmit={(event) => event.preventDefault()}
       >
         <input
-          className="rounded-md border px-3 py-2 text-sm"
+          className="rounded-xl border px-3 py-2.5 text-sm"
           value={search}
           onChange={(event) => {
             setPage(1);
@@ -368,7 +371,7 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
           placeholder="Search name / voter ID"
         />
         <select
-          className="rounded-md border px-3 py-2 text-sm"
+          className="rounded-xl border px-3 py-2.5 text-sm"
           value={filterTalukId}
           onChange={(event) => {
             setPage(1);
@@ -385,7 +388,7 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
           ))}
         </select>
         <select
-          className="rounded-md border px-3 py-2 text-sm"
+          className="rounded-xl border px-3 py-2.5 text-sm"
           value={filterVillageId}
           onChange={(event) => {
             setPage(1);
@@ -402,7 +405,7 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
           ))}
         </select>
         <select
-          className="rounded-md border px-3 py-2 text-sm"
+          className="rounded-xl border px-3 py-2.5 text-sm"
           value={filterWardId}
           onChange={(event) => {
             setPage(1);
@@ -418,7 +421,7 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
           ))}
         </select>
         <input
-          className="rounded-md border px-3 py-2 text-sm"
+          className="rounded-xl border px-3 py-2.5 text-sm"
           value={address}
           onChange={(event) => {
             setPage(1);
@@ -427,7 +430,7 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
           placeholder="Filter address"
         />
         <select
-          className="rounded-md border px-3 py-2 text-sm"
+          className="rounded-xl border px-3 py-2.5 text-sm"
           value={voted}
           onChange={(event) => {
             setPage(1);
@@ -440,7 +443,7 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
         </select>
         {isAdmin && (
           <button
-            className="rounded-md border px-3 py-2 text-sm"
+            className="rounded-xl border px-3 py-2.5 text-sm"
             type="button"
             onClick={() => exportMutation.mutate()}
           >
@@ -450,13 +453,13 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
       </form>
 
       {/* Voters Table */}
-      <div className="rounded-xl border bg-white p-4">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <button className="rounded-md border px-3 py-1 text-sm" type="button" onClick={toggleAll}>
+          <button className="rounded-xl border px-3 py-1.5 text-sm" type="button" onClick={toggleAll}>
             {selectedIds.length === data.items.length ? 'Unselect all' : 'Select all'}
           </button>
           <button
-            className="rounded-md bg-green-600 px-3 py-1 text-sm text-white disabled:opacity-60"
+            className="rounded-xl bg-green-600 px-3 py-1.5 text-sm text-white disabled:opacity-60"
             type="button"
             disabled={selectedIds.length === 0 || markVotedMutation.isPending}
             onClick={() => markVotedMutation.mutate(true)}
@@ -464,7 +467,7 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
             Mark voted ({selectedIds.length})
           </button>
           <button
-            className="rounded-md bg-yellow-600 px-3 py-1 text-sm text-white disabled:opacity-60"
+            className="rounded-xl bg-yellow-600 px-3 py-1.5 text-sm text-white disabled:opacity-60"
             type="button"
             disabled={selectedIds.length === 0 || markVotedMutation.isPending}
             onClick={() => markVotedMutation.mutate(false)}
@@ -475,7 +478,7 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
           {isAdmin && (
             <>
               <select
-                className="rounded-md border px-3 py-1 text-sm"
+                className="rounded-xl border px-3 py-1.5 text-sm"
                 value={targetZoneId}
                 onChange={(event) => setTargetZoneId(event.target.value)}
               >
@@ -489,7 +492,7 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
                   ))}
               </select>
               <button
-                className="rounded-md bg-orange-500 px-3 py-1 text-sm text-white disabled:opacity-60"
+                className="rounded-xl bg-orange-500 px-3 py-1.5 text-sm text-white disabled:opacity-60"
                 type="button"
                 disabled={selectedIds.length === 0 || !targetZoneId || moveZoneMutation.isPending}
                 onClick={() => moveZoneMutation.mutate()}
@@ -497,7 +500,7 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
                 Move selected
               </button>
               <button
-                className="rounded-md bg-red-600 px-3 py-1 text-sm text-white disabled:opacity-60"
+                className="rounded-xl bg-red-600 px-3 py-1.5 text-sm text-white disabled:opacity-60"
                 type="button"
                 disabled={selectedIds.length === 0 || bulkDeleteMutation.isPending}
                 onClick={() => bulkDeleteMutation.mutate()}
@@ -575,7 +578,7 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
           </p>
           <div className="flex gap-2">
             <button
-              className="rounded-md border px-3 py-1 text-sm disabled:opacity-60"
+              className="rounded-xl border px-3 py-1.5 text-sm disabled:opacity-60"
               type="button"
               disabled={data.pagination.page <= 1}
               onClick={() => setPage((prev) => Math.max(1, prev - 1))}
@@ -583,7 +586,7 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
               Prev
             </button>
             <button
-              className="rounded-md border px-3 py-1 text-sm disabled:opacity-60"
+              className="rounded-xl border px-3 py-1.5 text-sm disabled:opacity-60"
               type="button"
               disabled={data.pagination.page >= data.pagination.totalPages}
               onClick={() => setPage((prev) => prev + 1)}
@@ -626,7 +629,7 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
               </div>
             </dl>
             <button
-              className="rounded-md border px-3 py-2 text-sm"
+              className="rounded-xl border px-3 py-2.5 text-sm"
               type="button"
               onClick={() => setOpenContact(null)}
             >
@@ -639,18 +642,18 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
       {/* Edit Modal */}
       {editState && (
         <div className="fixed inset-0 z-30 grid place-items-center bg-black/40 p-4">
-          <form className="w-full max-w-2xl space-y-3 rounded-xl bg-white p-5 shadow-xl" onSubmit={onEditSubmit}>
+          <form className="w-full max-w-2xl space-y-3 rounded-2xl bg-white p-5 shadow-xl" onSubmit={onEditSubmit}>
             <h3 className="text-lg font-semibold">Edit voter</h3>
             <div className="grid gap-3 md:grid-cols-2">
               <input
-                className="rounded-md border px-3 py-2 text-sm"
+                className="rounded-xl border px-3 py-2.5 text-sm"
                 value={editState.name}
                 onChange={(event) => setEditState((prev) => (prev ? { ...prev, name: event.target.value } : prev))}
                 placeholder="Name"
                 required
               />
               <input
-                className="rounded-md border px-3 py-2 text-sm"
+                className="rounded-xl border px-3 py-2.5 text-sm"
                 value={editState.contactNumber}
                 onChange={(event) =>
                   setEditState((prev) => (prev ? { ...prev, contactNumber: event.target.value } : prev))
@@ -659,14 +662,14 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
                 required
               />
               <input
-                className="rounded-md border px-3 py-2 text-sm"
+                className="rounded-xl border px-3 py-2.5 text-sm"
                 value={editState.voterId}
                 onChange={(event) => setEditState((prev) => (prev ? { ...prev, voterId: event.target.value } : prev))}
                 placeholder="Voter ID"
                 required
               />
               <select
-                className="rounded-md border px-3 py-2 text-sm"
+                className="rounded-xl border px-3 py-2.5 text-sm"
                 value={editState.talukId}
                 onChange={(event) =>
                   setEditState((prev) =>
@@ -683,7 +686,7 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
                 ))}
               </select>
               <select
-                className="rounded-md border px-3 py-2 text-sm"
+                className="rounded-xl border px-3 py-2.5 text-sm"
                 value={editState.villageId}
                 onChange={(event) =>
                   setEditState((prev) =>
@@ -701,7 +704,7 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
                 ))}
               </select>
               <select
-                className="rounded-md border px-3 py-2 text-sm"
+                className="rounded-xl border px-3 py-2.5 text-sm"
                 value={editState.wardId}
                 onChange={(event) =>
                   setEditState((prev) => (prev ? { ...prev, wardId: event.target.value } : prev))
@@ -717,7 +720,7 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
                 ))}
               </select>
               <input
-                className="rounded-md border px-3 py-2 text-sm"
+                className="rounded-xl border px-3 py-2.5 text-sm"
                 value={editState.address}
                 onChange={(event) => setEditState((prev) => (prev ? { ...prev, address: event.target.value } : prev))}
                 placeholder="Address"
@@ -736,14 +739,14 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
             </div>
             <div className="flex gap-2">
               <button
-                className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+                className="rounded-xl bg-slate-900 px-3 py-2.5 text-sm font-medium text-white disabled:opacity-60"
                 type="submit"
                 disabled={updateMutation.isPending}
               >
                 Save changes
               </button>
               <button
-                className="rounded-md border px-3 py-2 text-sm"
+                className="rounded-xl border px-3 py-2.5 text-sm"
                 type="button"
                 onClick={() => setEditState(null)}
               >

@@ -82,10 +82,13 @@ export function VotedPage({ currentUser }: { currentUser: AuthUser | null }) {
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
+        <div className="inline-flex rounded-xl bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+          Voter Status
+        </div>
         <h2 className="text-2xl font-semibold">Voted Voters</h2>
         {currentUser?.role === 'ADMIN' && (
           <button
-            className="rounded-md border px-3 py-1 text-sm"
+            className="rounded-xl border px-3 py-2 text-sm"
             type="button"
             onClick={() => exportMutation.mutate()}
           >
@@ -96,7 +99,7 @@ export function VotedPage({ currentUser }: { currentUser: AuthUser | null }) {
       </div>
 
       <input
-        className="w-full rounded-md border bg-white px-3 py-2 text-sm"
+        className="w-full rounded-xl border bg-white px-3 py-2.5 text-sm"
         placeholder="Search name / voter ID"
         value={search}
         onChange={(event) => {
@@ -105,13 +108,13 @@ export function VotedPage({ currentUser }: { currentUser: AuthUser | null }) {
         }}
       />
 
-      <div className="overflow-x-auto rounded-xl border bg-white p-4">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <button className="rounded-md border px-3 py-1 text-sm" type="button" onClick={toggleAll}>
+          <button className="rounded-xl border px-3 py-1.5 text-sm" type="button" onClick={toggleAll}>
             {selectedIds.length === data.items.length ? 'Unselect all' : 'Select all'}
           </button>
           <button
-            className="rounded-md bg-yellow-600 px-3 py-1 text-sm text-white disabled:opacity-60"
+            className="rounded-xl bg-yellow-600 px-3 py-1.5 text-sm text-white disabled:opacity-60"
             type="button"
             disabled={selectedIds.length === 0 || unvoteMutation.isPending}
             onClick={() => unvoteMutation.mutate()}
@@ -163,7 +166,7 @@ export function VotedPage({ currentUser }: { currentUser: AuthUser | null }) {
           </p>
           <div className="flex gap-2">
             <button
-              className="rounded-md border px-3 py-1 text-sm disabled:opacity-60"
+              className="rounded-xl border px-3 py-1.5 text-sm disabled:opacity-60"
               type="button"
               disabled={data.pagination.page <= 1}
               onClick={() => setPage((prev) => Math.max(1, prev - 1))}
@@ -171,7 +174,7 @@ export function VotedPage({ currentUser }: { currentUser: AuthUser | null }) {
               Prev
             </button>
             <button
-              className="rounded-md border px-3 py-1 text-sm disabled:opacity-60"
+              className="rounded-xl border px-3 py-1.5 text-sm disabled:opacity-60"
               type="button"
               disabled={data.pagination.page >= data.pagination.totalPages}
               onClick={() => setPage((prev) => prev + 1)}

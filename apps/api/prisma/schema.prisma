@@ -12,6 +12,7 @@ datasource db {
 // ============================================================================
 
 enum UserRole {
+  SUPER_ADMIN
   ADMIN
   SUB_USER
 }
@@ -52,6 +53,13 @@ enum AuditAction {
   REFRESH_TOKEN_REUSE_DETECTED
   SESSION_EXPIRED
   SESSION_TIMEOUT
+  SUPER_ADMIN_LOGIN
+  APPROVE_CANDIDATE
+  REJECT_CANDIDATE
+  DISABLE_USER
+  DISABLE_CANDIDATE
+  VIEW_GLOBAL_VOTERS
+  PASSWORD_SETUP_COMPLETED
 }
 
 enum AccessRequestStatus {
@@ -78,6 +86,8 @@ model Candidate {
   constituency         String? // Required for ASSEMBLY, PARLIAMENT (parliamentary constituency for PARLIAMENT, assembly for ASSEMBLY)
   assemblyConstituency String? // For PARLIAMENT: the assembly constituency within parliamentary constituency
   taluk                String? // For LOCAL_BODY reference
+  talukId              String? // For LOCAL_BODY: specific block/taluk ID
+  villageId            String? // For LOCAL_BODY (panchayat): specific village ID
 
   partyName String?
   bio       String?
@@ -106,8 +116,9 @@ model Candidate {
 model User {
   id                 String   @id @default(cuid())
   username           String
-  passwordHash       String
+  passwordHash       String?
   role               UserRole
+  isActive           Boolean  @default(true)
   mfaEnabled         Boolean  @default(false)
   fullName           String?
   phone              String?
@@ -120,9 +131,9 @@ model User {
   profilePhoto       String?
   bio                String?
 
-  // Multi-tenant: belongs to a candidate
-  candidateId String
-  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  // Multi-tenant: belongs to a candidate (null for SUPER_ADMIN)
+  candidateId String?
+  candidate   Candidate? @relation(fields: [candidateId], references: [id], onDelete: Cascade)
 
   // For ADMIN: JSON array of taluk IDs they can access
   assignedTaluks Json? @default("[]")
@@ -143,6 +154,7 @@ model User {
   refreshTokens          RefreshToken[]
   recoveryCodes          RecoveryCode[]
   trustedDevices         TrustedDevice[]
+  passwordSetupToken     PasswordSetupToken?
   auditLogs              AuditLog[]      @relation("AuditActor")
   reviewedAccessRequests AccessRequest[] @relation("AccessRequestReviewer")
   assignedWards          SubUserWard[]
@@ -150,6 +162,7 @@ model User {
   @@unique([candidateId, username])
   @@index([candidateId])
   @@index([role])
+  @@index([isActive])
 }
 
 model SubUserWard {
@@ -242,8 +255,8 @@ model RefreshToken {
   createdAt DateTime  @default(now())
 
   // Multi-tenant
-  candidateId String
-  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  candidateId String?
+  candidate   Candidate? @relation(fields: [candidateId], references: [id], onDelete: Cascade)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -481,6 +494,7 @@ model LocationDatasetVersion {
 model AuditLog {
   id          String      @id @default(cuid())
   actorUserId String?
+  ipAddress   String?
   action      AuditAction
   entityType  String
   entityId    String?
@@ -496,6 +510,21 @@ model AuditLog {
   @@index([candidateId])
   @@index([action, createdAt])
   @@index([actorUserId])
+  @@index([ipAddress])
+}
+
+model PasswordSetupToken {
+  id         String   @id @default(cuid())
+  tokenHash  String
+  userId     String   @unique
+  expiresAt  DateTime
+  used       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@index([expiresAt])
 }
 
 // ============================================================================

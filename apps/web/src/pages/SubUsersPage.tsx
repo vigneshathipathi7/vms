@@ -138,21 +138,24 @@ export function SubUsersPage() {
   return (
     <section className="space-y-6">
       <div>
+        <div className="mb-3 inline-flex rounded-xl bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+          Team Access
+        </div>
         <h2 className="text-2xl font-semibold">Sub-user Management</h2>
         <p className="mt-1 text-sm text-slate-600">Create sub-users and review activity counts.</p>
       </div>
 
-      <form className="rounded-xl border bg-white p-4" onSubmit={onSubmit}>
+      <form className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" onSubmit={onSubmit}>
         <div className="mb-4 grid gap-3 md:grid-cols-2">
           <input
-            className="rounded-md border px-3 py-2 text-sm"
+            className="rounded-xl border px-3 py-2.5 text-sm"
             placeholder="Username"
             value={username}
             onChange={(event) => setUsername(event.target.value)}
             required
           />
           <input
-            className="rounded-md border px-3 py-2 text-sm"
+            className="rounded-xl border px-3 py-2.5 text-sm"
             type="password"
             placeholder="Password"
             value={password}
@@ -160,13 +163,13 @@ export function SubUsersPage() {
             required
           />
           <input
-            className="rounded-md border px-3 py-2 text-sm"
+            className="rounded-xl border px-3 py-2.5 text-sm"
             placeholder="Phone (optional)"
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
           />
           <input
-            className="rounded-md border px-3 py-2 text-sm"
+            className="rounded-xl border px-3 py-2.5 text-sm"
             type="email"
             placeholder="Email (optional)"
             value={email}
@@ -175,7 +178,7 @@ export function SubUsersPage() {
         </div>
 
         <button
-          className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
+          className="rounded-xl bg-slate-900 px-3 py-2.5 text-sm font-medium text-white disabled:opacity-60"
           type="submit"
           disabled={createMutation.isPending}
         >
@@ -183,14 +186,14 @@ export function SubUsersPage() {
         </button>
       </form>
 
-      {error && <p className="rounded-md bg-red-50 p-2 text-sm text-red-700">{error}</p>}
+      {error && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
       {subUsersQuery.isLoading ? (
         <p className="text-sm text-slate-600">Loading sub-users...</p>
       ) : subUsersQuery.isError || !subUsersQuery.data ? (
         <p className="text-sm text-red-600">Failed to load sub-users.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border bg-white p-4">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <table className="min-w-full text-left text-sm">
             <thead>
               <tr className="border-b text-slate-500">
@@ -234,24 +237,24 @@ export function SubUsersPage() {
       {/* Edit Modal */}
       {editing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-lg">
             <h3 className="mb-4 text-lg font-semibold">Edit Sub-user: {editing.username}</h3>
             <form onSubmit={submitEdit} className="space-y-3">
               <input
-                className="w-full rounded-md border px-3 py-2 text-sm"
+                className="w-full rounded-xl border px-3 py-2.5 text-sm"
                 type="password"
                 placeholder="New Password (leave blank to keep)"
                 value={editPassword}
                 onChange={(e) => setEditPassword(e.target.value)}
               />
               <input
-                className="w-full rounded-md border px-3 py-2 text-sm"
+                className="w-full rounded-xl border px-3 py-2.5 text-sm"
                 placeholder="Phone"
                 value={editPhone}
                 onChange={(e) => setEditPhone(e.target.value)}
               />
               <input
-                className="w-full rounded-md border px-3 py-2 text-sm"
+                className="w-full rounded-xl border px-3 py-2.5 text-sm"
                 type="email"
                 placeholder="Email"
                 value={editEmail}
@@ -261,14 +264,14 @@ export function SubUsersPage() {
               <div className="flex gap-2">
                 <button
                   type="submit"
-                  className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+                  className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
                   disabled={updateMutation.isPending}
                 >
                   {updateMutation.isPending ? 'Saving...' : 'Save'}
                 </button>
                 <button
                   type="button"
-                  className="rounded-md border px-4 py-2 text-sm"
+                  className="rounded-xl border px-4 py-2.5 text-sm"
                   onClick={() => setEditing(null)}
                 >
                   Cancel
@@ -282,21 +285,21 @@ export function SubUsersPage() {
       {/* Delete Confirmation Modal */}
       {deleting && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-lg">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-lg">
             <h3 className="mb-2 text-lg font-semibold">Delete Sub-user</h3>
             <p className="mb-4 text-sm text-slate-600">
               Are you sure you want to delete <strong>{deleting.username}</strong>? This action cannot be undone.
             </p>
             <div className="flex gap-2">
               <button
-                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+                className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
                 onClick={() => deleteMutation.mutate(deleting.id)}
                 disabled={deleteMutation.isPending}
               >
                 {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
               </button>
               <button
-                className="rounded-md border px-4 py-2 text-sm"
+                className="rounded-xl border px-4 py-2.5 text-sm"
                 onClick={() => setDeleting(null)}
               >
                 Cancel

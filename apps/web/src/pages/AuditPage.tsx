@@ -21,6 +21,9 @@ export function AuditPage() {
   return (
     <section className="space-y-6">
       <div>
+        <div className="mb-3 inline-flex rounded-xl bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+          Admin Insight
+        </div>
         <h2 className="text-2xl font-semibold">Audit Log Summary</h2>
         <p className="mt-1 text-sm text-slate-600">
           Admin-only view of who added how many voters.
@@ -28,17 +31,17 @@ export function AuditPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <article className="rounded-xl border bg-white p-4 shadow-sm">
+        <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-sm text-slate-500">Tracked users</p>
-          <p className="text-2xl font-semibold">{data.totals.users}</p>
+          <p className="mt-1 text-2xl font-semibold">{data.totals.users}</p>
         </article>
-        <article className="rounded-xl border bg-white p-4 shadow-sm">
+        <article className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <p className="text-sm text-slate-500">Total voters added</p>
-          <p className="text-2xl font-semibold">{data.totals.votersAdded}</p>
+          <p className="mt-1 text-2xl font-semibold">{data.totals.votersAdded}</p>
         </article>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border bg-white p-4">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <table className="min-w-full text-left text-sm">
           <thead>
             <tr className="border-b text-slate-500">

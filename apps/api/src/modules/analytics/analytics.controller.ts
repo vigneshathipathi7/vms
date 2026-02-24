@@ -23,7 +23,7 @@ import { AuditService } from '../audit/audit.service';
 
 @Controller('analytics')
 @UseGuards(AuthCookieGuard, RolesGuard)
-@Roles('ADMIN')
+@Roles('ADMIN', 'SUPER_ADMIN')
 export class AnalyticsController {
   constructor(
     private readonly analyticsService: AnalyticsService,

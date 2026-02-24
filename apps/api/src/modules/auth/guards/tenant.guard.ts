@@ -28,6 +28,7 @@ declare global {
   namespace Express {
     interface Request {
       tenantId?: string;
+      isSuperAdmin?: boolean;
     }
   }
 }
@@ -58,7 +59,12 @@ export class TenantGuard implements CanActivate {
       return true;
     }
 
-    // If user exists but no candidateId, that's an error
+    if (user.role === 'SUPER_ADMIN') {
+      request.isSuperAdmin = true;
+      return true;
+    }
+
+    // Non-super-admin users must have tenant context
     if (!user.candidateId) {
       throw new ForbiddenException('Tenant context not found');
     }

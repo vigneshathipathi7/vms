@@ -58,8 +58,8 @@ function RequestCard({
   };
 
   return (
-    <article className="rounded-lg border bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between">
+    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-slate-900">{request.fullName}</h3>
           <p className="text-sm text-slate-500">{request.email}</p>
@@ -114,7 +114,7 @@ function RequestCard({
       </div>
 
       {request.status !== 'PENDING' && (
-        <div className="mt-3 rounded-md bg-slate-50 p-3 text-sm">
+        <div className="mt-3 rounded-xl bg-slate-50 p-3 text-sm">
           <p>
             <span className="text-slate-500">Reviewed:</span>{' '}
             {request.reviewedAt && new Date(request.reviewedAt).toLocaleString()}
@@ -133,29 +133,29 @@ function RequestCard({
           {showNotes ? (
             <div className="space-y-3">
               <textarea
-                className="w-full rounded-md border px-3 py-2 text-sm"
+                className="w-full rounded-xl border px-3 py-2.5 text-sm"
                 rows={2}
                 placeholder="Admin notes (optional)"
                 value={adminNotes}
                 onChange={(e) => setAdminNotes(e.target.value)}
               />
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
-                  className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                  className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                   onClick={() => handleAction('APPROVE')}
                   disabled={isLoading}
                 >
                   Approve
                 </button>
                 <button
-                  className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                  className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                   onClick={() => handleAction('REJECT')}
                   disabled={isLoading}
                 >
                   Reject
                 </button>
                 <button
-                  className="rounded-md border px-4 py-2 text-sm font-medium text-slate-600"
+                  className="rounded-xl border px-4 py-2 text-sm font-medium text-slate-600"
                   onClick={() => setShowNotes(false)}
                 >
                   Cancel
@@ -163,16 +163,16 @@ function RequestCard({
               </div>
             </div>
           ) : (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
-                className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white"
+                className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white"
                 onClick={() => handleAction('APPROVE')}
                 disabled={isLoading}
               >
                 Quick Approve
               </button>
               <button
-                className="rounded-md border px-4 py-2 text-sm font-medium text-slate-600"
+                className="rounded-xl border px-4 py-2 text-sm font-medium text-slate-600"
                 onClick={() => setShowNotes(true)}
               >
                 Review with Notes
@@ -236,6 +236,9 @@ export function AccessRequestsPage() {
   return (
     <section className="space-y-6">
       <div>
+        <div className="mb-3 inline-flex rounded-xl bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+          Review Queue
+        </div>
         <h2 className="text-2xl font-semibold">Access Requests</h2>
         <p className="mt-1 text-sm text-slate-600">
           Review and manage new user access requests.
@@ -243,7 +246,7 @@ export function AccessRequestsPage() {
       </div>
 
       {errorMessage && (
-        <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{errorMessage}</p>
+        <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{errorMessage}</p>
       )}
 
       {/* Stats */}
@@ -251,7 +254,7 @@ export function AccessRequestsPage() {
         <div className="grid gap-4 sm:grid-cols-4">
           <button
             onClick={() => setStatusFilter('ALL')}
-            className={`rounded-xl border p-4 text-left transition ${
+            className={`rounded-2xl border border-slate-200 p-4 text-left transition ${
               statusFilter === 'ALL' ? 'border-slate-900 bg-slate-50' : 'bg-white'
             }`}
           >
@@ -260,7 +263,7 @@ export function AccessRequestsPage() {
           </button>
           <button
             onClick={() => setStatusFilter('PENDING')}
-            className={`rounded-xl border p-4 text-left transition ${
+            className={`rounded-2xl border border-slate-200 p-4 text-left transition ${
               statusFilter === 'PENDING' ? 'border-yellow-500 bg-yellow-50' : 'bg-white'
             }`}
           >
@@ -269,7 +272,7 @@ export function AccessRequestsPage() {
           </button>
           <button
             onClick={() => setStatusFilter('APPROVED')}
-            className={`rounded-xl border p-4 text-left transition ${
+            className={`rounded-2xl border border-slate-200 p-4 text-left transition ${
               statusFilter === 'APPROVED' ? 'border-green-500 bg-green-50' : 'bg-white'
             }`}
           >
@@ -278,7 +281,7 @@ export function AccessRequestsPage() {
           </button>
           <button
             onClick={() => setStatusFilter('REJECTED')}
-            className={`rounded-xl border p-4 text-left transition ${
+            className={`rounded-2xl border border-slate-200 p-4 text-left transition ${
               statusFilter === 'REJECTED' ? 'border-red-500 bg-red-50' : 'bg-white'
             }`}
           >
