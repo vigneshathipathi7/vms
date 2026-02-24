@@ -1,0 +1,480 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum UserRole {
+  ADMIN
+  SUB_USER
+}
+
+enum ElectionType {
+  LOCAL_BODY
+  ASSEMBLY
+  PARLIAMENT
+}
+
+enum ZoneType {
+  RED
+  GREEN
+  ORANGE
+}
+
+enum MfaMethodType {
+  TOTP
+}
+
+enum AuditAction {
+  USER_CREATED
+  USER_LOGIN_SUCCESS
+  USER_LOGIN_FAILED
+  MFA_SETUP_STARTED
+  MFA_SETUP_COMPLETED
+  MFA_CHALLENGE_CREATED
+  MFA_CHALLENGE_VERIFIED
+  VOTER_CREATED
+  VOTER_UPDATED
+  VOTER_DELETED
+  VOTER_MARKED_VOTED
+  ZONE_TRANSFERRED
+  CSV_EXPORTED
+  AUDIT_EXPORTED
+  CANDIDATE_CREATED
+  SUB_USER_WARD_ASSIGNED
+  REFRESH_TOKEN_REUSE_DETECTED
+  SESSION_EXPIRED
+  SESSION_TIMEOUT
+}
+
+enum AccessRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ============================================================================
+// MULTI-TENANT: CANDIDATE (Root of all tenant data)
+// ============================================================================
+
+model Candidate {
+  id             String       @id @default(uuid())
+  fullName       String
+  phone          String
+  email          String       @unique
+  electionType   ElectionType
+  contestingFor  String
+  
+  // Location fields - required based on electionType
+  state          String?      // Required for PARLIAMENT
+  district       String?      // Required for LOCAL_BODY, ASSEMBLY
+  constituency   String?      // Required for ASSEMBLY, PARLIAMENT (parliamentary constituency for PARLIAMENT, assembly for ASSEMBLY)
+  assemblyConstituency String? // For PARLIAMENT: the assembly constituency within parliamentary constituency
+  taluk          String?      // For LOCAL_BODY reference
+  
+  partyName      String?
+  bio            String?
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Tenant-owned entities
+  users          User[]
+  voters         Voter[]
+  zones          Zone[]
+  auditLogs      AuditLog[]
+  accessRequests AccessRequest[]
+  mfaMethods     MfaMethod[]
+  refreshTokens  RefreshToken[]
+
+  @@index([email])
+  @@index([isActive])
+  @@index([electionType])
+}
+
+// ============================================================================
+// USER & AUTH MODELS
+// ============================================================================
+
+model User {
+  id                 String   @id @default(cuid())
+  username           String
+  passwordHash       String
+  role               UserRole
+  mfaEnabled         Boolean  @default(false)
+  fullName           String?
+  phone              String?
+  email              String   @unique // Required and globally unique for login
+  officeAddress      String?
+  electionLevel      String?
+  constituencyName   String?
+  positionContesting String?
+  partyName          String?
+  profilePhoto       String?
+  bio                String?
+
+  // Multi-tenant: belongs to a candidate
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  // For ADMIN: JSON array of taluk IDs they can access
+  assignedTaluks Json? @default("[]")
+
+  // For SUB_USER: specific village and ward they manage (legacy single assignment)
+  managedVillageId String?
+  managedWardId    String?
+  managedVillage   Village? @relation(fields: [managedVillageId], references: [id])
+  managedWard      Ward?    @relation(fields: [managedWardId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  createdVoters          Voter[]           @relation("VoterAddedBy")
+  mfaMethods             MfaMethod[]
+  mfaChallenges          MfaChallenge[]
+  refreshTokens          RefreshToken[]
+  recoveryCodes          RecoveryCode[]
+  trustedDevices         TrustedDevice[]
+  auditLogs              AuditLog[]        @relation("AuditActor")
+  reviewedAccessRequests AccessRequest[]   @relation("AccessRequestReviewer")
+  assignedWards          SubUserWard[]
+
+  @@unique([candidateId, username])
+  @@index([candidateId])
+  @@index([role])
+}
+
+model SubUserWard {
+  id        String   @id @default(uuid())
+  userId    String
+  wardId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ward Ward @relation(fields: [wardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, wardId])
+  @@index([userId])
+  @@index([wardId])
+}
+
+model MfaMethod {
+  id              String        @id @default(cuid())
+  userId          String
+  type            MfaMethodType
+  secretEncrypted String
+  isPrimary       Boolean       @default(true)
+  isVerified      Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Multi-tenant
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenges MfaChallenge[]
+
+  @@unique([userId, type])
+  @@index([userId])
+  @@index([candidateId])
+}
+
+model MfaChallenge {
+  id           String    @id @default(cuid())
+  userId       String
+  methodId     String
+  expiresAt    DateTime
+  attemptCount Int       @default(0)
+  maxAttempts  Int       @default(5)
+  usedAt       DateTime?
+  ip           String?
+  userAgent    String?
+  createdAt    DateTime  @default(now())
+
+  user   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  method MfaMethod @relation(fields: [methodId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt, usedAt])
+}
+
+model TrustedDevice {
+  id         String    @id @default(cuid())
+  userId     String
+  tokenHash  String
+  label      String?
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model RecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  // Multi-tenant
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt, expiresAt])
+  @@index([candidateId])
+}
+
+// ============================================================================
+// ZONE MODEL
+// ============================================================================
+
+model Zone {
+  id        String   @id @default(cuid())
+  type      ZoneType
+  name      String
+  colorHex  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Multi-tenant
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  voters Voter[]
+
+  @@unique([candidateId, type])
+  @@index([candidateId])
+}
+
+// ============================================================================
+// VOTER MODEL (with soft delete)
+// ============================================================================
+
+model Voter {
+  id            String    @id @default(cuid())
+  name          String
+  contactNumber String
+  voterId       String
+  address       String
+  voted         Boolean   @default(false)
+  isDeleted     Boolean   @default(false)
+  deletedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Multi-tenant
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  // Location hierarchy - some fields optional based on election type
+  // LOCAL_BODY: talukId, villageId, wardId required
+  // ASSEMBLY: constituency required, wardId required, talukId/villageId optional
+  // PARLIAMENT: state, constituency required, wardId required, talukId/villageId optional
+  state             String?   // For PARLIAMENT
+  constituency      String?   // For ASSEMBLY and PARLIAMENT
+  assemblyConstituency String? // For PARLIAMENT (assembly within parliamentary)
+  talukId           String?   // Required for LOCAL_BODY, optional for others
+  villageId         String?   // Required for LOCAL_BODY, optional for others
+  wardId            String    // Always required (ward/booth)
+  zoneId            String
+
+  // Who added this voter
+  addedByUserId String
+
+  taluk   Taluk?   @relation(fields: [talukId], references: [id])
+  village Village? @relation(fields: [villageId], references: [id])
+  ward    Ward     @relation(fields: [wardId], references: [id])
+  zone    Zone     @relation(fields: [zoneId], references: [id])
+  addedBy User     @relation("VoterAddedBy", fields: [addedByUserId], references: [id])
+
+  @@unique([candidateId, voterId])
+  @@index([candidateId])
+  @@index([candidateId, isDeleted])
+  @@index([candidateId, voted])
+  @@index([wardId])
+  @@index([voted])
+  @@index([createdAt])
+  @@index([talukId])
+  @@index([villageId])
+  @@index([constituency])
+  @@index([state])
+}
+
+// ============================================================================
+// LOCATION HIERARCHY MODELS
+// ============================================================================
+
+model Taluk {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  district  String
+  createdAt DateTime @default(now())
+
+  villages Village[]
+  voters   Voter[]
+
+  @@index([district])
+}
+
+model Village {
+  id        String   @id @default(cuid())
+  name      String
+  talukId   String
+  createdAt DateTime @default(now())
+
+  taluk     Taluk   @relation(fields: [talukId], references: [id], onDelete: Cascade)
+  wards     Ward[]
+  voters    Voter[]
+  managedBy User[]
+
+  @@unique([talukId, name])
+  @@index([talukId])
+}
+
+model Ward {
+  id         String   @id @default(cuid())
+  wardNumber String
+  villageId  String
+  createdAt  DateTime @default(now())
+
+  village        Village       @relation(fields: [villageId], references: [id], onDelete: Cascade)
+  voters         Voter[]
+  managedBy      User[]
+  assignedUsers  SubUserWard[]
+
+  @@unique([villageId, wardNumber])
+  @@index([villageId])
+}
+
+// ============================================================================
+// LOCATION DATASET VERSIONING
+// ============================================================================
+
+model LocationDatasetVersion {
+  id        String   @id @default(cuid())
+  source    String   // e.g., "election-commission-india", "manual-import"
+  version   String   // e.g., "2.0.1" or date format "20260223"
+  importedAt DateTime @default(now())
+  
+  // Import metadata
+  metadata  Json?    // e.g., { taluks: 25, villages: 450, wards: 5000, status: "success" }
+  
+  @@index([source, version])
+  @@index([importedAt])
+}
+
+// ============================================================================
+// AUDIT LOG
+// ============================================================================
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  actorUserId String?
+  action      AuditAction
+  entityType  String
+  entityId    String?
+  metadata    Json?
+  createdAt   DateTime    @default(now())
+
+  // Multi-tenant
+  candidateId String?
+  candidate   Candidate? @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  actor User? @relation("AuditActor", fields: [actorUserId], references: [id])
+
+  @@index([candidateId])
+  @@index([action, createdAt])
+  @@index([actorUserId])
+}
+
+// ============================================================================
+// ACCESS REQUEST (Public signup flow)
+// ============================================================================
+
+model AccessRequest {
+  id       String @id @default(cuid())
+  fullName String
+  phone    String
+  email    String @unique
+
+  // Election details - dynamic based on electionType
+  electionType         ElectionType
+  contestingFor        String
+  state                String?      // Required for PARLIAMENT
+  district             String?      // Required for LOCAL_BODY, ASSEMBLY
+  constituency         String?      // Required for ASSEMBLY (assembly), PARLIAMENT (parliamentary)
+  assemblyConstituency String?      // For PARLIAMENT: assembly constituency within parliamentary
+  taluk                String?      // For LOCAL_BODY reference
+  partyName            String?
+  bio                  String?
+
+  // Legacy field for backward compatibility
+  requestedTaluks Json @default("[]")
+
+  // Additional info
+  reason String?
+
+  // Status tracking
+  status           AccessRequestStatus @default(PENDING)
+  adminNotes       String?
+  reviewedAt       DateTime?
+  reviewedByUserId String?
+
+  // When approved, links to created candidate
+  candidateId String?
+  candidate   Candidate? @relation(fields: [candidateId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reviewedBy User? @relation("AccessRequestReviewer", fields: [reviewedByUserId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([candidateId])
+  @@index([electionType])
+}
+
+// ============================================================================
+// USAGE METERING: Track resource usage for monitoring and billing
+// ============================================================================
+
+model UsageSnapshot {
+  id          String   @id @default(cuid())
+  candidateId String
+  month       String   // Format: "YYYY-MM" e.g. "2026-03"
+  totalVoters Int
+  totalExports Int
+  totalUsers  Int
+  createdAt   DateTime @default(now())
+
+  @@unique([candidateId, month])
+  @@index([candidateId])
+  @@index([month])
+}

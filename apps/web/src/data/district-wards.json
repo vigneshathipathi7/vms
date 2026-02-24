@@ -1,0 +1,238 @@
+{
+  "Ariyalur": {
+    "Ariyalur Municipality": 21,
+    "Jayankondam Municipality": 21
+  },
+  "Chengalpattu": {
+    "Tambaram Corporation": 70,
+    "Chengalpattu Municipality": 33,
+    "Maraimalainagar Municipality": 21,
+    "Nandivaram-Guduvancheri Municipality": 30,
+    "Pallavapuram Municipality": 42,
+    "Pammal Municipality": 21,
+    "Anakaputhur Municipality": 18
+  },
+  "Chennai": {
+    "Greater Chennai Corporation": 200
+  },
+  "Coimbatore": {
+    "Coimbatore Corporation": 100,
+    "Mettupalayam Municipality": 33,
+    "Pollachi Municipality": 36,
+    "Valparai Municipality": 21,
+    "Karamadai Municipality": 27,
+    "Gudalur Municipality": 21,
+    "Madukkarai Municipality": 27,
+    "Karumathampatti Municipality": 27
+  },
+  "Cuddalore": {
+    "Cuddalore Corporation": 45,
+    "Chidambaram Municipality": 33,
+    "Nellikuppam Municipality": 30,
+    "Panruti Municipality": 33,
+    "Vridhachalam Municipality": 33,
+    "Tittakudi Municipality": 24
+  },
+  "Dharmapuri": {
+    "Dharmapuri Municipality": 33
+  },
+  "Dindigul": {
+    "Dindigul Corporation": 48,
+    "Kodaikanal Municipality": 24,
+    "Oddanchatram Municipality": 18,
+    "Palani Municipality": 33
+  },
+  "Erode": {
+    "Erode Corporation": 60,
+    "Bhavani Municipality": 27,
+    "Gobichettipalayam Municipality": 30,
+    "Sathyamangalam Municipality": 27,
+    "Punjai Puliampatti Municipality": 18
+  },
+  "Kallakurichi": {
+    "Kallakurichi Municipality": 21,
+    "Tirukkoyilur Municipality": 21,
+    "Ulundurpet Municipality": 21
+  },
+  "Kanchipuram": {
+    "Kanchipuram Corporation": 51,
+    "Kundrathur Municipality": 30,
+    "Mangadu Municipality": 27,
+    "Sriperumbudur Municipality": 18
+  },
+  "Kanyakumari": {
+    "Nagercoil Corporation": 52,
+    "Colachel Municipality": 24,
+    "Kuzhithurai Municipality": 21,
+    "Padmanabhapuram Municipality": 21,
+    "Kollankodu Municipality": 21
+  },
+  "Karur": {
+    "Karur Corporation": 48,
+    "Kulithalai Municipality": 21,
+    "Pallapatti Municipality": 27,
+    "Punjaipugalur Municipality": 21
+  },
+  "Krishnagiri": {
+    "Hosur Corporation": 45,
+    "Krishnagiri Municipality": 33
+  },
+  "Madurai": {
+    "Madurai Corporation": 100,
+    "Melur Municipality": 27,
+    "Thirumangalam Municipality": 27,
+    "Usilampatti Municipality": 24
+  },
+  "Mayiladuthurai": {
+    "Mayiladuthurai Municipality": 36,
+    "Sirkali Municipality": 24
+  },
+  "Nagapattinam": {
+    "Nagapattinam Municipality": 36,
+    "Vedaranyam Municipality": 21
+  },
+  "Namakkal": {
+    "Namakkal Municipality": 39,
+    "Komarapalayam Municipality": 33,
+    "Pallipalayam Municipality": 21,
+    "Rasipuram Municipality": 27,
+    "Tiruchengode Municipality": 33
+  },
+  "Nilgiris": {
+    "Udhagamandalam Municipality": 36,
+    "Coonoor Municipality": 30,
+    "Gudalur Municipality": 27,
+    "Nelliyalam Municipality": 21
+  },
+  "Perambalur": {
+    "Perambalur Municipality": 21
+  },
+  "Pudukkottai": {
+    "Pudukkottai Municipality": 42,
+    "Aranthangi Municipality": 27
+  },
+  "Ramanathapuram": {
+    "Ramanathapuram Municipality": 33,
+    "Keezhakarai Municipality": 21,
+    "Paramakudi Municipality": 36,
+    "Rameswaram Municipality": 21
+  },
+  "Ranipet": {
+    "Arkonam Municipality": 36,
+    "Arcot Municipality": 30,
+    "Melvisharam Municipality": 21,
+    "Ranipet Municipality": 30,
+    "Walajapet Municipality": 24,
+    "Sholingur Municipality": 27
+  },
+  "Salem": {
+    "Salem Corporation": 60,
+    "Attur Municipality": 33,
+    "Edappadi Municipality": 30,
+    "Mettur Municipality": 30,
+    "Narasingapuram Municipality": 18,
+    "Idappadi Municipality": 30,
+    "Taramangalam Municipality": 21
+  },
+  "Sivaganga": {
+    "Sivaganga Municipality": 27,
+    "Devakottai Municipality": 27,
+    "Karaikudi Municipality": 36,
+    "Manamadurai Municipality": 21
+  },
+  "Tenkasi": {
+    "Tenkasi Municipality": 33,
+    "Kadayanallur Municipality": 33,
+    "Puliyankudi Municipality": 33,
+    "Sankarankoil Municipality": 30,
+    "Shenkottai Municipality": 24,
+    "Surandai Municipality": 27
+  },
+  "Thanjavur": {
+    "Thanjavur Corporation": 51,
+    "Kumbakonam Corporation": 48,
+    "Pattukkottai Municipality": 33,
+    "Adiramapattinam Municipality": 27
+  },
+  "Theni": {
+    "Theni Allinagaram Municipality": 33,
+    "Bodinayakanur Municipality": 33,
+    "Cumbum Municipality": 33,
+    "Chinnamanur Municipality": 27,
+    "Gudalur Municipality": 21,
+    "Periyakulam Municipality": 30
+  },
+  "Thoothukudi": {
+    "Thoothukudi Corporation": 60,
+    "Kayalpattinam Municipality": 18,
+    "Kovilpatti Municipality": 36,
+    "Tiruchendur Municipality": 27
+  },
+  "Tiruchirappalli": {
+    "Tiruchirappalli Corporation": 65,
+    "Manapparai Municipality": 27,
+    "Thuvakudi Municipality": 21,
+    "Musiri Municipality": 21,
+    "Lalgudi Municipality": 21
+  },
+  "Tirunelveli": {
+    "Tirunelveli Corporation": 55,
+    "Ambasamudram Municipality": 21,
+    "Vickramasingapuram Municipality": 21,
+    "Kalakkad Municipality": 21
+  },
+  "Tirupathur": {
+    "Tirupathur Municipality": 36,
+    "Jolarpet Municipality": 18,
+    "Vaniyambadi Municipality": 36,
+    "Ambur Municipality": 36
+  },
+  "Tiruppur": {
+    "Tiruppur Corporation": 60,
+    "Dharapuram Municipality": 30,
+    "Kangeyam Municipality": 21,
+    "Palladam Municipality": 18,
+    "Udumalaipettai Municipality": 33,
+    "Vellakoil Municipality": 21,
+    "Thirumuruganpoondi Municipality": 27
+  },
+  "Tiruvallur": {
+    "Avadi Corporation": 48,
+    "Tiruvallur Municipality": 27,
+    "Poonamallee Municipality": 21,
+    "Thiruverkadu Municipality": 18,
+    "Tiruttani Municipality": 21,
+    "Ponneri Municipality": 27,
+    "Tirunindravur Municipality": 27
+  },
+  "Tiruvannamalai": {
+    "Tiruvannamalai Municipality": 39,
+    "Arani Municipality": 33,
+    "Cheyyar Municipality": 27,
+    "Vandavasi Municipality": 24
+  },
+  "Tiruvarur": {
+    "Tiruvarur Municipality": 30,
+    "Koothanallur Municipality": 24,
+    "Mannargudi Municipality": 33,
+    "Thiruthuraipoondi Municipality": 24
+  },
+  "Vellore": {
+    "Vellore Corporation": 60,
+    "Gudiyatham Municipality": 36,
+    "Pernambut Municipality": 21
+  },
+  "Viluppuram": {
+    "Viluppuram Municipality": 42,
+    "Tindivanam Municipality": 33,
+    "Kottakuppam Municipality": 27
+  },
+  "Virudhunagar": {
+    "Sivakasi Corporation": 48,
+    "Virudhunagar Municipality": 36,
+    "Aruppukkottai Municipality": 36,
+    "Rajapalayam Municipality": 42,
+    "Srivilliputhur Municipality": 33,
+    "Sattur Municipality": 24
+  }
+}
