@@ -164,6 +164,82 @@ export class LocationsService {
   }
 
   /**
+   * Get flat wards list (SHARED globally - READ ONLY).
+   * Optional filters help power dropdowns in non-local-body flows.
+   */
+  async getWardsList(options?: {
+    districtName?: string;
+    districtNames?: string[];
+    talukId?: string;
+    villageId?: string;
+  }) {
+    const where: {
+      villageId?: string;
+      village?: {
+        talukId?: string;
+        taluk?: {
+          district?:
+            | {
+                name?: string;
+              }
+            | {
+                name: {
+                  in: string[];
+                };
+              };
+        };
+      };
+    } = {};
+
+    if (options?.villageId) {
+      where.villageId = options.villageId;
+    }
+
+    if (options?.talukId || options?.districtName || options?.districtNames?.length) {
+      where.village = {
+        ...(options?.talukId ? { talukId: options.talukId } : {}),
+        ...((options?.districtNames?.length || options?.districtName)
+          ? {
+              taluk: {
+                district: options?.districtNames?.length
+                  ? { name: { in: options.districtNames } }
+                  : { name: options?.districtName },
+              },
+            }
+          : {}),
+      };
+    }
+
+    return this.prisma.ward.findMany({
+      where,
+      orderBy: [{ village: { name: 'asc' } }, { wardNumber: 'asc' }],
+      select: {
+        id: true,
+        wardNumber: true,
+        villageId: true,
+        village: {
+          select: {
+            id: true,
+            name: true,
+            taluk: {
+              select: {
+                id: true,
+                name: true,
+                district: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  /**
    * Get all Assembly Constituencies (SHARED globally - READ ONLY).
    * Optionally filter by district.
    */

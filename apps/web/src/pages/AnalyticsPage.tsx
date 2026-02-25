@@ -10,7 +10,8 @@
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { apiFetch } from '../services/api';
+import { apiFetch, buildQuery } from '../services/api';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 
 interface DailyVoterData {
   date: string;
@@ -60,34 +61,84 @@ interface TopPerformer {
   weeklyVoted: number;
 }
 
+interface UsageUserScopeItem {
+  userId: string;
+  username: string;
+  fullName: string | null;
+  email: string | null;
+  candidateId: string;
+  candidateName: string;
+}
+
 type DateRange = '7d' | '30d' | '90d' | 'all';
 
 export function AnalyticsPage() {
   const [dateRange, setDateRange] = React.useState<DateRange>('30d');
+  const [selectedCandidateId, setSelectedCandidateId] = React.useState<string>('ALL');
+  const currentUser = useCurrentUser();
+  const isSuperAdmin = currentUser.user?.role === 'SUPER_ADMIN';
+
+  const candidateScopeQuery =
+    isSuperAdmin && selectedCandidateId !== 'ALL'
+      ? buildQuery({ candidateId: selectedCandidateId })
+      : '';
+
+  const usageUsersQuery = useQuery({
+    queryKey: ['usage', 'users', 'selector'],
+    queryFn: () => apiFetch<UsageUserScopeItem[]>('/usage/users'),
+    enabled: isSuperAdmin,
+    refetchInterval: isSuperAdmin ? 5000 : false,
+    refetchOnWindowFocus: true,
+  });
 
   const summaryQuery = useQuery({
-    queryKey: ['analytics', 'summary'],
-    queryFn: () => apiFetch<AnalyticsSummary>('/analytics/summary'),
+    queryKey: ['analytics', 'summary', selectedCandidateId],
+    queryFn: () => apiFetch<AnalyticsSummary>(`/analytics/summary${candidateScopeQuery}`),
+    refetchInterval: isSuperAdmin ? 5000 : false,
+    refetchOnWindowFocus: true,
   });
 
   const dailyVotersQuery = useQuery({
-    queryKey: ['analytics', 'daily-voters', dateRange],
-    queryFn: () => apiFetch<DailyVoterData[]>(`/analytics/daily-voters?range=${dateRange}`),
+    queryKey: ['analytics', 'daily-voters', dateRange, selectedCandidateId],
+    queryFn: () =>
+      apiFetch<DailyVoterData[]>(
+        `/analytics/daily-voters${buildQuery({
+          range: dateRange,
+          candidateId: isSuperAdmin && selectedCandidateId !== 'ALL' ? selectedCandidateId : undefined,
+        })}`,
+      ),
+    refetchInterval: isSuperAdmin ? 5000 : false,
+    refetchOnWindowFocus: true,
   });
 
   const productivityQuery = useQuery({
-    queryKey: ['analytics', 'subuser-productivity'],
-    queryFn: () => apiFetch<SubUserProductivity[]>('/analytics/subuser-productivity'),
+    queryKey: ['analytics', 'subuser-productivity', selectedCandidateId],
+    queryFn: () =>
+      apiFetch<SubUserProductivity[]>(
+        `/analytics/subuser-productivity${candidateScopeQuery}`,
+      ),
+    refetchInterval: isSuperAdmin ? 5000 : false,
+    refetchOnWindowFocus: true,
   });
 
   const progressQuery = useQuery({
-    queryKey: ['analytics', 'voting-progress'],
-    queryFn: () => apiFetch<VotingProgress>('/analytics/voting-progress'),
+    queryKey: ['analytics', 'voting-progress', selectedCandidateId],
+    queryFn: () => apiFetch<VotingProgress>(`/analytics/voting-progress${candidateScopeQuery}`),
+    refetchInterval: isSuperAdmin ? 5000 : false,
+    refetchOnWindowFocus: true,
   });
 
   const topPerformersQuery = useQuery({
-    queryKey: ['analytics', 'top-performers'],
-    queryFn: () => apiFetch<TopPerformer[]>('/analytics/top-performers?limit=5'),
+    queryKey: ['analytics', 'top-performers', selectedCandidateId],
+    queryFn: () =>
+      apiFetch<TopPerformer[]>(
+        `/analytics/top-performers${buildQuery({
+          limit: 5,
+          candidateId: isSuperAdmin && selectedCandidateId !== 'ALL' ? selectedCandidateId : undefined,
+        })}`,
+      ),
+    refetchInterval: isSuperAdmin ? 5000 : false,
+    refetchOnWindowFocus: true,
   });
 
   if (summaryQuery.isLoading) {
@@ -113,8 +164,45 @@ export function AnalyticsPage() {
         <h2 className="text-2xl font-semibold">Campaign Analytics</h2>
         <p className="mt-1 text-sm text-slate-600">
           Visual insights into your voter data and team performance.
+          {isSuperAdmin ? ' Auto-refreshes every 5 seconds.' : ''}
         </p>
       </div>
+
+      {isSuperAdmin && (
+        <div className="rounded-xl border bg-white p-4 shadow-sm">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-base font-semibold">Scope</h3>
+            <button
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
+                selectedCandidateId === 'ALL' ? 'bg-slate-900 text-white' : 'text-slate-700'
+              }`}
+              type="button"
+              onClick={() => setSelectedCandidateId('ALL')}
+            >
+              All Users
+            </button>
+          </div>
+
+          {usageUsersQuery.isLoading ? (
+            <p className="text-sm text-slate-500">Loading users...</p>
+          ) : usageUsersQuery.data && usageUsersQuery.data.length > 0 ? (
+            <select
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+              value={selectedCandidateId}
+              onChange={(event) => setSelectedCandidateId(event.target.value)}
+            >
+              <option value="ALL">All Users</option>
+              {usageUsersQuery.data.map((item) => (
+                <option key={item.userId} value={item.candidateId}>
+                  {item.fullName || item.username} - {item.candidateName}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="text-sm text-slate-500">No users available.</p>
+          )}
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

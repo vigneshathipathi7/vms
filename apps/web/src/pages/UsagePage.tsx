@@ -11,10 +11,13 @@
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { apiFetch } from '../services/api';
+import { apiFetch, buildQuery } from '../services/api';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 
 interface UsageSummary {
   totalVoters: number;
+  totalVoted: number;
+  totalPending: number;
   totalSubUsers: number;
   exportsThisMonth: number;
   votersAddedThisMonth: number;
@@ -46,25 +49,62 @@ interface ExportRecord {
   metadata: unknown;
 }
 
+interface UsageUserScopeItem {
+  userId: string;
+  username: string;
+  fullName: string | null;
+  email: string | null;
+  candidateId: string;
+  candidateName: string;
+  totalSubUsers: number;
+  totalVoters: number;
+  totalVoted: number;
+}
+
 export function UsagePage() {
+  const currentUser = useCurrentUser();
+  const isSuperAdmin = currentUser.user?.role === 'SUPER_ADMIN';
+  const [selectedCandidateId, setSelectedCandidateId] = React.useState<string>('ALL');
+
+  const selectedCandidateQuery =
+    isSuperAdmin && selectedCandidateId !== 'ALL'
+      ? buildQuery({ candidateId: selectedCandidateId })
+      : '';
+
+  const usageUsersQuery = useQuery({
+    queryKey: ['usage', 'users'],
+    queryFn: () => apiFetch<UsageUserScopeItem[]>('/usage/users'),
+    enabled: isSuperAdmin,
+    refetchInterval: isSuperAdmin ? 5000 : false,
+    refetchOnWindowFocus: true,
+  });
+
   const summaryQuery = useQuery({
-    queryKey: ['usage', 'summary'],
-    queryFn: () => apiFetch<UsageSummary>('/usage/summary'),
+    queryKey: ['usage', 'summary', selectedCandidateId],
+    queryFn: () => apiFetch<UsageSummary>(`/usage/summary${selectedCandidateQuery}`),
+    refetchInterval: isSuperAdmin ? 5000 : false,
+    refetchOnWindowFocus: true,
   });
 
   const limitsQuery = useQuery({
-    queryKey: ['usage', 'limits'],
-    queryFn: () => apiFetch<UsageLimits>('/usage/limits'),
+    queryKey: ['usage', 'limits', selectedCandidateId],
+    queryFn: () => apiFetch<UsageLimits>(`/usage/limits${selectedCandidateQuery}`),
+    refetchInterval: isSuperAdmin ? 5000 : false,
+    refetchOnWindowFocus: true,
   });
 
   const historyQuery = useQuery({
-    queryKey: ['usage', 'history'],
-    queryFn: () => apiFetch<UsageSnapshot[]>('/usage/history'),
+    queryKey: ['usage', 'history', selectedCandidateId],
+    queryFn: () => apiFetch<UsageSnapshot[]>(`/usage/history${selectedCandidateQuery}`),
+    refetchInterval: isSuperAdmin ? 5000 : false,
+    refetchOnWindowFocus: true,
   });
 
   const exportsQuery = useQuery({
-    queryKey: ['usage', 'exports'],
-    queryFn: () => apiFetch<ExportRecord[]>('/usage/exports'),
+    queryKey: ['usage', 'exports', selectedCandidateId],
+    queryFn: () => apiFetch<ExportRecord[]>(`/usage/exports${selectedCandidateQuery}`),
+    refetchInterval: isSuperAdmin ? 5000 : false,
+    refetchOnWindowFocus: true,
   });
 
   if (summaryQuery.isLoading || limitsQuery.isLoading) {
@@ -86,8 +126,74 @@ export function UsagePage() {
         <h2 className="text-2xl font-semibold">Resource Usage</h2>
         <p className="mt-1 text-sm text-slate-600">
           Monitor your resource consumption and plan limits.
+          {isSuperAdmin ? ' Auto-refreshes every 5 seconds.' : ''}
         </p>
       </div>
+
+      {isSuperAdmin && (
+        <div className="rounded-xl border bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-base font-semibold">User Scope (Admin + Sub-users)</h3>
+            <button
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
+                selectedCandidateId === 'ALL' ? 'bg-slate-900 text-white' : 'text-slate-700'
+              }`}
+              type="button"
+              onClick={() => setSelectedCandidateId('ALL')}
+            >
+              All Users
+            </button>
+          </div>
+
+          {usageUsersQuery.isLoading ? (
+            <p className="text-sm text-slate-500">Loading users...</p>
+          ) : !(usageUsersQuery.data && usageUsersQuery.data.length > 0) ? (
+            <p className="text-sm text-slate-500">No admin users available.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b text-slate-500">
+                  <tr>
+                    <th className="px-2 py-2">User</th>
+                    <th className="px-2 py-2">Candidate</th>
+                    <th className="px-2 py-2">Sub-users</th>
+                    <th className="px-2 py-2">Voters</th>
+                    <th className="px-2 py-2">Voted</th>
+                    <th className="px-2 py-2">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {usageUsersQuery.data.map((item) => (
+                    <tr key={item.userId} className="border-b last:border-b-0">
+                      <td className="px-2 py-2">
+                        {item.fullName || item.username}
+                        {item.email ? <span className="ml-1 text-xs text-slate-500">({item.email})</span> : null}
+                      </td>
+                      <td className="px-2 py-2">{item.candidateName}</td>
+                      <td className="px-2 py-2">{item.totalSubUsers}</td>
+                      <td className="px-2 py-2">{item.totalVoters.toLocaleString()}</td>
+                      <td className="px-2 py-2">{item.totalVoted.toLocaleString()}</td>
+                      <td className="px-2 py-2">
+                        <button
+                          className={`rounded-lg border px-3 py-1 text-xs font-medium ${
+                            selectedCandidateId === item.candidateId
+                              ? 'bg-indigo-600 text-white'
+                              : 'text-slate-700'
+                          }`}
+                          type="button"
+                          onClick={() => setSelectedCandidateId(item.candidateId)}
+                        >
+                          View Usage
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Warnings */}
       {limits?.warnings && limits.warnings.length > 0 && (
@@ -102,7 +208,7 @@ export function UsagePage() {
       )}
 
       {/* Usage Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {/* Voters Usage */}
         <article className="rounded-xl border bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between">
@@ -175,6 +281,28 @@ export function UsagePage() {
               style={{ width: `${Math.min(limits?.exportUsagePercent ?? 0, 100)}%` }}
             />
           </div>
+        </article>
+
+        {/* Voted */}
+        <article className="rounded-xl border bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-slate-600">Total Voted</p>
+          </div>
+          <p className="mt-2 text-3xl font-semibold text-green-700">
+            {summary?.totalVoted.toLocaleString()}
+          </p>
+          <p className="text-sm text-slate-500">Voters marked as voted</p>
+        </article>
+
+        {/* Pending */}
+        <article className="rounded-xl border bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-slate-600">Total Pending</p>
+          </div>
+          <p className="mt-2 text-3xl font-semibold text-orange-700">
+            {summary?.totalPending.toLocaleString()}
+          </p>
+          <p className="text-sm text-slate-500">Voters not yet marked voted</p>
         </article>
       </div>
 

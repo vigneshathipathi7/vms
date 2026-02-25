@@ -9,6 +9,7 @@
 import {
   Controller,
   Get,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
@@ -32,8 +33,11 @@ export class UsageController {
    */
   @Get('summary')
   @Throttle({ default: { limit: 30, ttl: 60000 } })
-  async getUsageSummary(@CurrentUser() user: AuthenticatedUser) {
-    return this.usageService.getUsageSummary(user.candidateId);
+  async getUsageSummary(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('candidateId') candidateId?: string,
+  ) {
+    return this.usageService.getUsageSummary(user, candidateId);
   }
 
   /**
@@ -43,10 +47,13 @@ export class UsageController {
    */
   @Get('limits')
   @Throttle({ default: { limit: 30, ttl: 60000 } })
-  async getUsageLimits(@CurrentUser() user: AuthenticatedUser) {
+  async getUsageLimits(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('candidateId') candidateId?: string,
+  ) {
     const [limits, warnings] = await Promise.all([
-      this.usageService.getUsageWithLimits(user.candidateId),
-      this.usageService.checkLimitWarnings(user.candidateId),
+      this.usageService.getUsageWithLimits(user, candidateId),
+      this.usageService.checkLimitWarnings(user, candidateId),
     ]);
 
     return { ...limits, warnings };
@@ -59,8 +66,11 @@ export class UsageController {
    */
   @Get('history')
   @Throttle({ default: { limit: 20, ttl: 60000 } })
-  async getUsageHistory(@CurrentUser() user: AuthenticatedUser) {
-    return this.usageService.getUsageHistory(user.candidateId);
+  async getUsageHistory(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('candidateId') candidateId?: string,
+  ) {
+    return this.usageService.getUsageHistory(user, candidateId);
   }
 
   /**
@@ -70,7 +80,16 @@ export class UsageController {
    */
   @Get('exports')
   @Throttle({ default: { limit: 20, ttl: 60000 } })
-  async getExportHistory(@CurrentUser() user: AuthenticatedUser) {
-    return this.usageService.getExportHistory(user.candidateId);
+  async getExportHistory(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('candidateId') candidateId?: string,
+  ) {
+    return this.usageService.getExportHistory(user, 20, candidateId);
+  }
+
+  @Get('users')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  async getUsageUsers(@CurrentUser() user: AuthenticatedUser) {
+    return this.usageService.getUsageUsers(user);
   }
 }

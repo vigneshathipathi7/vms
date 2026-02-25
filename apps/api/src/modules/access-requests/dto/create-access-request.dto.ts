@@ -1,4 +1,4 @@
-import { IsArray, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsArray, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { ElectionType } from '@prisma/client';
 
 export class CreateAccessRequestDto {
@@ -9,7 +9,7 @@ export class CreateAccessRequestDto {
 
   @IsString()
   @IsNotEmpty()
-  @MaxLength(20)
+  @Matches(/^\d{10}$/, { message: 'phone must be exactly 10 digits' })
   phone!: string;
 
   @IsEmail()

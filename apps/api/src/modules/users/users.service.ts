@@ -295,17 +295,40 @@ export class UsersService {
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
         select: {
+          candidateId: true,
           candidate: {
             select: {
+              fullName: true,
+              phone: true,
+              electionType: true,
+              contestingFor: true,
+              partyName: true,
+              bio: true,
+              district: true,
+              constituency: true,
+              taluk: true,
               talukId: true,
               villageId: true,
             },
           },
         },
       });
+
+      const candidate = user?.candidate;
+
       return { 
         item: {
           ...profile,
+          fullName: profile.fullName ?? candidate?.fullName ?? null,
+          phone: profile.phone ?? candidate?.phone ?? null,
+          electionLevel:
+            profile.electionLevel ??
+            (candidate?.electionType ? candidate.electionType.replace(/_/g, ' ') : null),
+          constituencyName:
+            profile.constituencyName ?? candidate?.constituency ?? candidate?.district ?? candidate?.taluk ?? null,
+          positionContesting: profile.positionContesting ?? candidate?.contestingFor ?? null,
+          partyName: profile.partyName ?? candidate?.partyName ?? null,
+          bio: profile.bio ?? candidate?.bio ?? null,
           talukId: user?.candidate?.talukId ?? null,
           villageId: user?.candidate?.villageId ?? null,
         },

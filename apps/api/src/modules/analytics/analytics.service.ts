@@ -10,7 +10,6 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AuthenticatedUser } from '../auth/types/auth.types';
 
 export interface DailyVoterData {
   date: string;
@@ -64,26 +63,35 @@ export class AnalyticsService {
    * Get daily voter additions for a date range
    */
   async getDailyVoterAdditions(
-    candidateId: string,
+    candidateId: string | undefined,
     range: DateRange = '30d',
   ): Promise<DailyVoterData[]> {
     const startDate = this.getStartDate(range);
 
-    // Use raw query for date grouping (more efficient)
-    const results = await this.prisma.$queryRaw<
-      { date: Date; count: bigint }[]
-    >`
-      SELECT 
-        DATE("createdAt") as date,
-        COUNT(*) as count
-      FROM "Voter"
-      WHERE 
-        "candidateId" = ${candidateId}
-        AND "isDeleted" = false
-        AND "createdAt" >= ${startDate}
-      GROUP BY DATE("createdAt")
-      ORDER BY date ASC
-    `;
+    const results = candidateId
+      ? await this.prisma.$queryRaw<{ date: Date; count: bigint }[]>`
+          SELECT
+            DATE("createdAt") as date,
+            COUNT(*) as count
+          FROM "Voter"
+          WHERE
+            "candidateId" = ${candidateId}
+            AND "isDeleted" = false
+            AND "createdAt" >= ${startDate}
+          GROUP BY DATE("createdAt")
+          ORDER BY date ASC
+        `
+      : await this.prisma.$queryRaw<{ date: Date; count: bigint }[]>`
+          SELECT
+            DATE("createdAt") as date,
+            COUNT(*) as count
+          FROM "Voter"
+          WHERE
+            "isDeleted" = false
+            AND "createdAt" >= ${startDate}
+          GROUP BY DATE("createdAt")
+          ORDER BY date ASC
+        `;
 
     // Convert to response format and fill in missing dates
     return this.fillDateGaps(
@@ -100,13 +108,13 @@ export class AnalyticsService {
    * Get sub-user productivity metrics
    */
   async getSubUserProductivity(
-    candidateId: string,
+    candidateId?: string,
   ): Promise<SubUserProductivity[]> {
     // Get all sub-users for this candidate
     const subUsers = await this.prisma.user.findMany({
       where: {
-        candidateId,
         role: 'SUB_USER',
+        ...(candidateId ? { candidateId } : {}),
       },
       select: {
         id: true,
@@ -124,8 +132,8 @@ export class AnalyticsService {
     const voterCounts = await this.prisma.voter.groupBy({
       by: ['addedByUserId'],
       where: {
-        candidateId,
         isDeleted: false,
+        ...(candidateId ? { candidateId } : {}),
       },
       _count: {
         id: true,
@@ -136,9 +144,9 @@ export class AnalyticsService {
     const votedCounts = await this.prisma.voter.groupBy({
       by: ['addedByUserId'],
       where: {
-        candidateId,
         isDeleted: false,
         voted: true,
+        ...(candidateId ? { candidateId } : {}),
       },
       _count: {
         id: true,
@@ -174,10 +182,10 @@ export class AnalyticsService {
   /**
    * Get voting progress with zone breakdown
    */
-  async getVotingProgress(candidateId: string): Promise<VotingProgress> {
+  async getVotingProgress(candidateId?: string): Promise<VotingProgress> {
     // Get zones for this candidate
     const zones = await this.prisma.zone.findMany({
-      where: { candidateId },
+      where: candidateId ? { candidateId } : undefined,
       select: {
         id: true,
         name: true,
@@ -190,8 +198,8 @@ export class AnalyticsService {
     const zoneCounts = await this.prisma.voter.groupBy({
       by: ['zoneId'],
       where: {
-        candidateId,
         isDeleted: false,
+        ...(candidateId ? { candidateId } : {}),
       },
       _count: {
         id: true,
@@ -202,9 +210,9 @@ export class AnalyticsService {
     const zoneVotedCounts = await this.prisma.voter.groupBy({
       by: ['zoneId'],
       where: {
-        candidateId,
         isDeleted: false,
         voted: true,
+        ...(candidateId ? { candidateId } : {}),
       },
       _count: {
         id: true,
@@ -248,7 +256,7 @@ export class AnalyticsService {
   /**
    * Get analytics summary for dashboard
    */
-  async getAnalyticsSummary(candidateId: string): Promise<AnalyticsSummary> {
+  async getAnalyticsSummary(candidateId?: string): Promise<AnalyticsSummary> {
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const oneWeekAgo = new Date(now);
@@ -262,39 +270,39 @@ export class AnalyticsService {
     // Count voters added today
     const todayAdditions = await this.prisma.voter.count({
       where: {
-        candidateId,
         isDeleted: false,
         createdAt: { gte: startOfToday },
+        ...(candidateId ? { candidateId } : {}),
       },
     });
 
     // Count voters added this week
     const weekAdditions = await this.prisma.voter.count({
       where: {
-        candidateId,
         isDeleted: false,
         createdAt: { gte: oneWeekAgo },
+        ...(candidateId ? { candidateId } : {}),
       },
     });
 
     // Count voters added this month
     const monthAdditions = await this.prisma.voter.count({
       where: {
-        candidateId,
         isDeleted: false,
         createdAt: { gte: firstDayThisMonth },
+        ...(candidateId ? { candidateId } : {}),
       },
     });
 
     // Count voters added last month
     const votersLastMonth = await this.prisma.voter.count({
       where: {
-        candidateId,
         isDeleted: false,
         createdAt: {
           gte: firstDayLastMonth,
           lt: firstDayThisMonth,
         },
+        ...(candidateId ? { candidateId } : {}),
       },
     });
 
@@ -309,10 +317,10 @@ export class AnalyticsService {
     // Get totals
     const [totalVoters, totalVoted] = await this.prisma.$transaction([
       this.prisma.voter.count({
-        where: { candidateId, isDeleted: false },
+        where: { isDeleted: false, ...(candidateId ? { candidateId } : {}) },
       }),
       this.prisma.voter.count({
-        where: { candidateId, isDeleted: false, voted: true },
+        where: { isDeleted: false, voted: true, ...(candidateId ? { candidateId } : {}) },
       }),
     ]);
 
@@ -330,16 +338,16 @@ export class AnalyticsService {
   /**
    * Get top performers (sub-users with most voters added this week)
    */
-  async getTopPerformers(candidateId: string, limit = 5) {
+  async getTopPerformers(candidateId: string | undefined, limit = 5) {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
     const topPerformers = await this.prisma.voter.groupBy({
       by: ['addedByUserId'],
       where: {
-        candidateId,
         isDeleted: false,
         createdAt: { gte: oneWeekAgo },
+        ...(candidateId ? { candidateId } : {}),
       },
       _count: {
         id: true,
@@ -356,10 +364,10 @@ export class AnalyticsService {
     const votedThisWeek = await this.prisma.voter.groupBy({
       by: ['addedByUserId'],
       where: {
-        candidateId,
         isDeleted: false,
         voted: true,
         createdAt: { gte: oneWeekAgo },
+        ...(candidateId ? { candidateId } : {}),
       },
       _count: {
         id: true,

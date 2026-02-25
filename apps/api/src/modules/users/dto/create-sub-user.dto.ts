@@ -33,7 +33,7 @@ export class CreateSubUserDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(30)
+  @Matches(/^\d{10}$/, { message: 'phone must be exactly 10 digits' })
   phone?: string;
 
   @IsOptional()

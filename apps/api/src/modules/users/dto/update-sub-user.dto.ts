@@ -2,6 +2,7 @@ import {
   IsEmail,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -15,7 +16,7 @@ export class UpdateSubUserDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(30)
+  @Matches(/^\d{10}$/, { message: 'phone must be exactly 10 digits' })
   phone?: string;
 
   @IsOptional()

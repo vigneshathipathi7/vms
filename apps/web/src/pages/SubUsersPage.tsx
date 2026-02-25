@@ -26,6 +26,14 @@ function toOptional(value: string) {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+function sanitizePhone(value: string) {
+  return value.replace(/\D/g, '').slice(0, 10);
+}
+
+function isValidPhone(value: string) {
+  return /^\d{10}$/.test(value);
+}
+
 interface EditingSubUser {
   id: string;
   username: string;
@@ -123,15 +131,29 @@ export function SubUsersPage() {
   function submitEdit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!editing) return;
+
+    const trimmedPhone = editPhone.trim();
+    if (trimmedPhone && !isValidPhone(trimmedPhone)) {
+      setEditError('Phone must be exactly 10 digits');
+      return;
+    }
+
     const payload: { password?: string; phone?: string; email?: string } = {};
     if (editPassword.trim()) payload.password = editPassword.trim();
-    if (editPhone.trim()) payload.phone = editPhone.trim();
+    if (trimmedPhone) payload.phone = trimmedPhone;
     if (editEmail.trim()) payload.email = editEmail.trim();
     updateMutation.mutate({ id: editing.id, payload });
   }
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    const trimmedPhone = phone.trim();
+    if (trimmedPhone && !isValidPhone(trimmedPhone)) {
+      setError('Phone must be exactly 10 digits');
+      return;
+    }
+
     createMutation.mutate();
   }
 
@@ -166,7 +188,10 @@ export function SubUsersPage() {
             className="rounded-xl border px-3 py-2.5 text-sm"
             placeholder="Phone (optional)"
             value={phone}
-            onChange={(event) => setPhone(event.target.value)}
+            onChange={(event) => setPhone(sanitizePhone(event.target.value))}
+            inputMode="numeric"
+            maxLength={10}
+            pattern="[0-9]{10}"
           />
           <input
             className="rounded-xl border px-3 py-2.5 text-sm"
@@ -251,7 +276,10 @@ export function SubUsersPage() {
                 className="w-full rounded-xl border px-3 py-2.5 text-sm"
                 placeholder="Phone"
                 value={editPhone}
-                onChange={(e) => setEditPhone(e.target.value)}
+                onChange={(e) => setEditPhone(sanitizePhone(e.target.value))}
+                inputMode="numeric"
+                maxLength={10}
+                pattern="[0-9]{10}"
               />
               <input
                 className="w-full rounded-xl border px-3 py-2.5 text-sm"

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { apiFetch, ApiError } from '../services/api';
 import {
   AccessRequest,
+  AccessRequestUpdateResponse,
   AccessRequestsResponse,
   AccessRequestStatsResponse,
 } from '../types/api';
@@ -45,16 +46,36 @@ function RequestCard({
   isLoading,
 }: {
   request: AccessRequest;
-  onAction: (id: string, action: 'APPROVE' | 'REJECT', notes?: string) => void;
+  onAction: (id: string, action: 'APPROVE' | 'REJECT', notes?: string, initialPassword?: string) => void;
   isLoading: boolean;
 }) {
   const [showNotes, setShowNotes] = useState(false);
   const [adminNotes, setAdminNotes] = useState('');
+  const [initialPassword, setInitialPassword] = useState('');
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [approveWithSetupLink, setApproveWithSetupLink] = useState(true);
 
   const handleAction = (action: 'APPROVE' | 'REJECT') => {
-    onAction(request.id, action, adminNotes || undefined);
+    if (action === 'APPROVE') {
+      const password = initialPassword.trim();
+      if (!approveWithSetupLink && (password.length < 8 || password.length > 128)) {
+        setLocalError('Initial password must be between 8 and 128 characters.');
+        return;
+      }
+      onAction(
+        request.id,
+        action,
+        adminNotes || undefined,
+        approveWithSetupLink ? undefined : password,
+      );
+    } else {
+      onAction(request.id, action, adminNotes || undefined);
+    }
+
+    setLocalError(null);
     setShowNotes(false);
     setAdminNotes('');
+    setInitialPassword('');
   };
 
   return (
@@ -132,6 +153,28 @@ function RequestCard({
         <div className="mt-4 border-t pt-4">
           {showNotes ? (
             <div className="space-y-3">
+              <input
+                className="w-full rounded-xl border px-3 py-2.5 text-sm"
+                type="password"
+                placeholder="Temporary password (8-128 chars)"
+                value={initialPassword}
+                onChange={(e) => {
+                  setInitialPassword(e.target.value);
+                  if (localError) setLocalError(null);
+                }}
+                disabled={approveWithSetupLink}
+              />
+              <label className="flex items-center gap-2 text-sm text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={approveWithSetupLink}
+                  onChange={(e) => {
+                    setApproveWithSetupLink(e.target.checked);
+                    setLocalError(null);
+                  }}
+                />
+                Generate setup link instead of setting a temporary password
+              </label>
               <textarea
                 className="w-full rounded-xl border px-3 py-2.5 text-sm"
                 rows={2}
@@ -139,6 +182,7 @@ function RequestCard({
                 value={adminNotes}
                 onChange={(e) => setAdminNotes(e.target.value)}
               />
+              {localError && <p className="text-sm text-red-600">{localError}</p>}
               <div className="flex flex-wrap gap-2">
                 <button
                   className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
@@ -166,10 +210,10 @@ function RequestCard({
             <div className="flex flex-wrap gap-2">
               <button
                 className="rounded-xl bg-green-600 px-4 py-2 text-sm font-medium text-white"
-                onClick={() => handleAction('APPROVE')}
+                onClick={() => setShowNotes(true)}
                 disabled={isLoading}
               >
-                Quick Approve
+                Review & Approve
               </button>
               <button
                 className="rounded-xl border px-4 py-2 text-sm font-medium text-slate-600"
@@ -189,6 +233,7 @@ export function AccessRequestsPage() {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('PENDING');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [generatedSetupLink, setGeneratedSetupLink] = useState<string | null>(null);
 
   const statsQuery = useQuery({
     queryKey: ['access-requests', 'stats'],
@@ -208,26 +253,37 @@ export function AccessRequestsPage() {
       id,
       action,
       adminNotes,
+      initialPassword,
     }: {
       id: string;
       action: 'APPROVE' | 'REJECT';
       adminNotes?: string;
+      initialPassword?: string;
     }) =>
-      apiFetch(`/access-requests/${id}`, {
+      apiFetch<AccessRequestUpdateResponse>(`/access-requests/${id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ action, adminNotes }),
+        body: JSON.stringify({ action, adminNotes, initialPassword }),
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       setErrorMessage(null);
+      if (data.setupLink) {
+        setGeneratedSetupLink(data.setupLink);
+      }
       queryClient.invalidateQueries({ queryKey: ['access-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['access-requests', 'stats', 'sidebar'] });
     },
     onError: (error) => {
       setErrorMessage(extractErrorMessage(error));
     },
   });
 
-  const handleAction = (id: string, action: 'APPROVE' | 'REJECT', adminNotes?: string) => {
-    updateMutation.mutate({ id, action, adminNotes });
+  const handleAction = (
+    id: string,
+    action: 'APPROVE' | 'REJECT',
+    adminNotes?: string,
+    initialPassword?: string,
+  ) => {
+    updateMutation.mutate({ id, action, adminNotes, initialPassword });
   };
 
   const stats = statsQuery.data;
@@ -247,6 +303,29 @@ export function AccessRequestsPage() {
 
       {errorMessage && (
         <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{errorMessage}</p>
+      )}
+
+      {generatedSetupLink && (
+        <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3">
+          <p className="text-sm font-medium text-indigo-900">Setup link generated</p>
+          <p className="mt-1 break-all text-xs text-indigo-700">{generatedSetupLink}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              className="rounded-lg bg-indigo-700 px-3 py-1.5 text-xs font-semibold text-white"
+              type="button"
+              onClick={() => navigator.clipboard.writeText(generatedSetupLink)}
+            >
+              Copy link
+            </button>
+            <button
+              className="rounded-lg border border-indigo-300 px-3 py-1.5 text-xs font-semibold text-indigo-700"
+              type="button"
+              onClick={() => setGeneratedSetupLink(null)}
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Stats */}

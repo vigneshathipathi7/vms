@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -255,6 +256,120 @@ export class AuthService {
     return {
       refreshed: true,
       user: session.user,
+    };
+  }
+
+  async validatePasswordSetupToken(token: string) {
+    const tokenValue = token?.trim();
+    if (!tokenValue) {
+      throw new BadRequestException('Token is required');
+    }
+
+    const tokenHash = this.hashToken(tokenValue);
+    const record = await this.prisma.passwordSetupToken.findFirst({
+      where: {
+        tokenHash,
+        used: false,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            isActive: true,
+            passwordHash: true,
+          },
+        },
+      },
+    });
+
+    if (!record) {
+      throw new UnauthorizedException('Invalid or expired setup link');
+    }
+
+    if (!record.user.isActive) {
+      throw new UnauthorizedException('Account is disabled');
+    }
+
+    if (record.user.passwordHash) {
+      throw new ConflictException('Password is already set for this account');
+    }
+
+    return {
+      valid: true,
+      email: record.user.email,
+    };
+  }
+
+  async setupPassword(token: string, password: string) {
+    const tokenValue = token?.trim();
+    if (!tokenValue) {
+      throw new BadRequestException('Token is required');
+    }
+
+    const tokenHash = this.hashToken(tokenValue);
+    const record = await this.prisma.passwordSetupToken.findFirst({
+      where: {
+        tokenHash,
+        used: false,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    if (!record) {
+      throw new UnauthorizedException('Invalid or expired setup link');
+    }
+
+    if (!record.user.isActive) {
+      throw new UnauthorizedException('Account is disabled');
+    }
+
+    if (record.user.passwordHash) {
+      throw new ConflictException('Password is already set for this account');
+    }
+
+    const passwordHash = await argon2.hash(password);
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: record.userId },
+        data: { passwordHash },
+      }),
+      this.prisma.passwordSetupToken.update({
+        where: { id: record.id },
+        data: { used: true },
+      }),
+      this.prisma.passwordSetupToken.deleteMany({
+        where: {
+          userId: record.userId,
+          id: {
+            not: record.id,
+          },
+        },
+      }),
+    ]);
+
+    await this.auditService.logEvent({
+      actorUserId: record.userId,
+      action: 'PASSWORD_SETUP_COMPLETED',
+      entityType: 'User',
+      entityId: record.userId,
+      candidateId: record.user.candidateId ?? undefined,
+      metadata: {
+        source: 'setup_link',
+      },
+    });
+
+    return {
+      message: 'Password has been set successfully. You can now login.',
     };
   }
 

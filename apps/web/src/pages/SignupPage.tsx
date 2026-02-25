@@ -38,6 +38,10 @@ function extractErrorMessage(error: unknown) {
   return 'Request failed';
 }
 
+function sanitizePhone(value: string) {
+  return value.replace(/\D/g, '').slice(0, 10);
+}
+
 interface FormData {
   fullName: string;
   phone: string;
@@ -167,6 +171,11 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (!/^\d{10}$/.test(formData.phone)) {
+      setErrorMessage('Phone number must be exactly 10 digits');
+      return;
+    }
     
     if (!formData.electionType) {
       setErrorMessage('Please select an election type');
@@ -308,8 +317,11 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
                 className="w-full rounded-xl border px-3 py-2.5"
                 type="tel"
                 value={formData.phone}
-                onChange={(e) => handleChange('phone', e.target.value)}
-                placeholder="+91 98765 43210"
+                onChange={(e) => handleChange('phone', sanitizePhone(e.target.value))}
+                placeholder="10-digit phone number"
+                inputMode="numeric"
+                maxLength={10}
+                pattern="[0-9]{10}"
                 required
               />
             </label>

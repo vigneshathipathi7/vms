@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, MaxLength, MinLength, ValidateIf } from 'class-validator';
+import { IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export enum UpdateAccessRequestAction {
   APPROVE = 'APPROVE',
@@ -16,10 +16,10 @@ export class UpdateAccessRequestDto {
 
   /**
    * Password for the new ADMIN user.
-   * Required only when action is APPROVE.
+   * Optional. If omitted on approval, a password setup link will be generated.
    */
-  @ValidateIf((o) => o.action === UpdateAccessRequestAction.APPROVE)
   @IsString()
+  @IsOptional()
   @MinLength(8)
   @MaxLength(128)
   initialPassword?: string;

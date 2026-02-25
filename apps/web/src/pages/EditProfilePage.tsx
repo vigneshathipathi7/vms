@@ -17,6 +17,10 @@ const ELECTION_LEVELS = [
 // Election levels that require village-level selection
 const PANCHAYAT_LEVELS = ['Panchayat President', 'Ward Member'];
 
+function sanitizePhone(value: string) {
+    return value.replace(/\D/g, '').slice(0, 10);
+}
+
 export function EditProfilePage() {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
@@ -134,8 +138,12 @@ export function EditProfilePage() {
                         <input
                             className="mt-1 block w-full rounded-xl border px-3 py-2.5 text-sm"
                             value={form.phone}
-                            onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+                            onChange={(e) => setForm((prev) => ({ ...prev, phone: sanitizePhone(e.target.value) }))}
                             placeholder="Primary Contact"
+                            type="tel"
+                            inputMode="numeric"
+                            maxLength={10}
+                            pattern="[0-9]{10}"
                         />
                     </label>
                 </div>

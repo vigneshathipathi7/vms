@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req, Res } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
@@ -8,6 +8,7 @@ import {
   TRUSTED_DEVICE_COOKIE_NAME,
 } from './auth.constants';
 import { LoginRequestDto } from './dto/login-request.dto';
+import { SetupPasswordDto } from './dto/setup-password.dto';
 import { Public } from './decorators/public.decorator';
 
 @Controller('auth')
@@ -52,5 +53,17 @@ export class AuthController {
   @Get('me')
   me(@Req() req: Request) {
     return this.authService.me(req.cookies?.[ACCESS_COOKIE_NAME]);
+  }
+
+  @Public()
+  @Get('setup-password/validate')
+  validateSetupToken(@Query('token') token: string) {
+    return this.authService.validatePasswordSetupToken(token);
+  }
+
+  @Public()
+  @Post('setup-password')
+  setupPassword(@Body() body: SetupPasswordDto) {
+    return this.authService.setupPassword(body.token, body.password);
   }
 }

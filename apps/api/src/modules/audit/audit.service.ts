@@ -3,12 +3,20 @@ import { Prisma } from '@prisma/client';
 import { Response } from 'express';
 import { Transform } from 'stream';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuthenticatedUser } from '../auth/types/auth.types';
 
 @Injectable()
 export class AuditService {
   private readonly logger = new Logger(AuditService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  private resolveCandidateScope(actor: AuthenticatedUser, targetCandidateId?: string) {
+    if (actor.role === 'SUPER_ADMIN') {
+      return targetCandidateId || undefined;
+    }
+    return actor.candidateId;
+  }
 
   async logEvent(input: {
     actorUserId?: string;
@@ -34,15 +42,21 @@ export class AuditService {
     }
   }
 
-  async listLogs(candidateId: string, limit: number) {
+  async listLogs(actor: AuthenticatedUser, limit: number, targetCandidateId?: string) {
+    const scopedCandidateId = this.resolveCandidateScope(actor, targetCandidateId);
     return this.prisma.auditLog.findMany({
-      where: { candidateId },
+      where: scopedCandidateId ? { candidateId: scopedCandidateId } : undefined,
       orderBy: { createdAt: 'desc' },
       take: limit,
     });
   }
 
-  async voterAdditionsSummary(candidateId: string) {
+  async voterAdditionsSummary(actor: AuthenticatedUser, targetCandidateId?: string) {
+    const scopedCandidateId = this.resolveCandidateScope(actor, targetCandidateId);
+    const userScopeClause = scopedCandidateId
+      ? Prisma.sql`AND u."candidateId" = ${scopedCandidateId}`
+      : Prisma.empty;
+
     const items = await this.prisma.$queryRaw<
       {
         userId: string;
@@ -61,7 +75,7 @@ export class AuditService {
       FROM "User" u
       LEFT JOIN "Voter" v ON v."addedByUserId" = u.id AND v."isDeleted" = false
       WHERE u.role IN ('ADMIN'::"UserRole", 'SUB_USER'::"UserRole")
-        AND u."candidateId" = ${candidateId}
+        ${userScopeClause}
       GROUP BY u.id
       ORDER BY u.role ASC, u.username ASC
     `);
@@ -87,10 +101,12 @@ export class AuditService {
    * @param response - Express response object for streaming
    */
   async streamAuditExportCsv(
-    candidateId: string,
+    actor: AuthenticatedUser,
     userId?: string,
     response?: Response,
+    targetCandidateId?: string,
   ) {
+    const scopedCandidateId = this.resolveCandidateScope(actor, targetCandidateId);
     const csvStream = new Transform({
       transform(chunk, encoding, callback) {
         callback(null, chunk);
@@ -113,7 +129,7 @@ export class AuditService {
     while (hasMoreRecords) {
       const logs = await this.prisma.auditLog.findMany({
         where: {
-          candidateId,
+          ...(scopedCandidateId ? { candidateId: scopedCandidateId } : {}),
           ...(userId && { actorUserId: userId }),
         },
         include: {

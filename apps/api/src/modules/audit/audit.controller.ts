@@ -17,15 +17,19 @@ export class AuditController {
   @Get('logs')
   listLogs(
     @CurrentUser() actor: AuthenticatedUser,
+    @Query('candidateId') candidateId?: string,
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
   ) {
     const boundedLimit = Math.min(Math.max(limit ?? 50, 1), 200);
-    return this.auditService.listLogs(actor.candidateId, boundedLimit);
+    return this.auditService.listLogs(actor, boundedLimit, candidateId);
   }
 
   @Get('voter-additions')
-  voterAdditions(@CurrentUser() actor: AuthenticatedUser) {
-    return this.auditService.voterAdditionsSummary(actor.candidateId);
+  voterAdditions(
+    @CurrentUser() actor: AuthenticatedUser,
+    @Query('candidateId') candidateId?: string,
+  ) {
+    return this.auditService.voterAdditionsSummary(actor, candidateId);
   }
 
   /**
@@ -45,6 +49,7 @@ export class AuditController {
   @Throttle({ default: { limit: 2, ttl: 60000 } }) // 2 requests per minute
   async exportCsv(
     @CurrentUser() actor: AuthenticatedUser,
+    @Query('candidateId') candidateId?: string,
     @Query('userId') userId?: string,
     @Res() response?: Response,
   ) {
@@ -63,9 +68,10 @@ export class AuditController {
 
     // Stream the CSV data
     return this.auditService.streamAuditExportCsv(
-      actor.candidateId,
+      actor,
       userId,
       response,
+      candidateId,
     );
   }
 }

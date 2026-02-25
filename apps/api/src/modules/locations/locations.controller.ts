@@ -85,6 +85,35 @@ export class LocationsController {
   }
 
   /**
+   * Get flat ward list, optionally filtered (SHARED globally).
+   */
+  @Get('wards/list')
+  getWardsList(
+    @Query('districtName') districtName: string | undefined,
+    @Query('districtNames') districtNames: string | undefined,
+    @Query('talukId') talukId: string | undefined,
+    @Query('villageId') villageId: string | undefined,
+    @CurrentUser() user: AuthenticatedUser | undefined,
+  ) {
+    if (!user) {
+      throw new UnauthorizedException('Unauthenticated');
+    }
+    const districtNameList = districtNames
+      ? districtNames
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean)
+      : undefined;
+
+    return this.locationsService.getWardsList({
+      districtName,
+      districtNames: districtNameList,
+      talukId,
+      villageId,
+    });
+  }
+
+  /**
    * Get all zones for the current candidate (TENANT-SCOPED).
    */
   @Get('zones')

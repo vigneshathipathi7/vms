@@ -4,7 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CaptchaService } from '../captcha/captcha.service';
 import { TelegramService } from '../telegram/telegram.service';
@@ -16,11 +18,18 @@ import {
 } from './dto';
 
 const BCRYPT_ROUNDS = 10;
+const SETUP_TOKEN_TTL_HOURS = 24;
+const DEFAULT_ZONES = [
+  { type: 'RED' as const, name: 'Red Zone', colorHex: '#ef4444' },
+  { type: 'GREEN' as const, name: 'Green Zone', colorHex: '#22c55e' },
+  { type: 'ORANGE' as const, name: 'Orange Zone', colorHex: '#f97316' },
+];
 
 @Injectable()
 export class AccessRequestsService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
     private readonly captchaService: CaptchaService,
     private readonly telegramService: TelegramService,
   ) {}
@@ -202,10 +211,6 @@ export class AccessRequestsService {
 
     // For approval, we need to create Candidate and User
     if (isApproval) {
-      if (!payload.initialPassword) {
-        throw new BadRequestException('initialPassword is required for approval');
-      }
-
       // Check if email is still available (could have been taken since request was created)
       const existingUser = await this.prisma.user.findUnique({
         where: { email: request.email },
@@ -217,8 +222,15 @@ export class AccessRequestsService {
         );
       }
 
-      // Hash password
-      const passwordHash = await bcrypt.hash(payload.initialPassword, BCRYPT_ROUNDS);
+      const trimmedInitialPassword = payload.initialPassword?.trim();
+      const passwordHash = trimmedInitialPassword
+        ? await bcrypt.hash(trimmedInitialPassword, BCRYPT_ROUNDS)
+        : null;
+      const setupTokenRaw = trimmedInitialPassword ? null : randomBytes(32).toString('hex');
+      const setupTokenHash = setupTokenRaw ? this.hashToken(setupTokenRaw) : null;
+      const setupTokenExpiry = setupTokenRaw
+        ? new Date(Date.now() + SETUP_TOKEN_TTL_HOURS * 60 * 60 * 1000)
+        : null;
 
       // Use a transaction to create Candidate, User, and update AccessRequest atomically
       const [candidate, user, updated] = await this.prisma.$transaction(async (tx) => {
@@ -250,7 +262,37 @@ export class AccessRequestsService {
             candidateId: newCandidate.id,
             fullName: request.fullName,
             phone: request.phone,
+            electionLevel: this.toElectionLevelLabel(request.electionType),
+            constituencyName: request.constituency ?? request.district ?? request.taluk,
+            positionContesting: request.contestingFor,
+            partyName: request.partyName,
+            bio: request.bio,
           },
+        });
+
+        if (setupTokenHash && setupTokenExpiry) {
+          await tx.passwordSetupToken.upsert({
+            where: { userId: newUser.id },
+            create: {
+              userId: newUser.id,
+              tokenHash: setupTokenHash,
+              expiresAt: setupTokenExpiry,
+              used: false,
+            },
+            update: {
+              tokenHash: setupTokenHash,
+              expiresAt: setupTokenExpiry,
+              used: false,
+            },
+          });
+        }
+
+        await tx.zone.createMany({
+          data: DEFAULT_ZONES.map((zone) => ({
+            ...zone,
+            candidateId: newCandidate.id,
+          })),
+          skipDuplicates: true,
         });
 
         // Update the access request with the new candidate reference
@@ -268,6 +310,12 @@ export class AccessRequestsService {
         return [newCandidate, newUser, updatedRequest];
       });
 
+      const frontendOrigin =
+        this.configService.get<string>('FRONTEND_ORIGIN') ?? 'http://localhost:5173';
+      const setupLink = setupTokenRaw
+        ? `${frontendOrigin.replace(/\/$/, '')}/setup-password?token=${setupTokenRaw}`
+        : null;
+
       return {
         item: updated,
         candidate: {
@@ -278,7 +326,10 @@ export class AccessRequestsService {
           id: user.id,
           email: user.email,
         },
-        message: `Access request has been approved. Candidate "${candidate.fullName}" and admin user have been created.`,
+        setupLink,
+        message: setupLink
+          ? `Access request approved. Share setup link with ${user.email} to set password.`
+          : `Access request has been approved. Candidate "${candidate.fullName}" and admin user have been created.`,
       };
     }
 
@@ -313,5 +364,13 @@ export class AccessRequestsService {
       rejected,
       total,
     };
+  }
+
+  private hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  private toElectionLevelLabel(electionType: string): string {
+    return electionType.replace(/_/g, ' ');
   }
 }

@@ -1,5 +1,6 @@
 import {
   IsString,
+  Matches,
   MaxLength,
   MinLength,
   IsOptional,
@@ -12,13 +13,13 @@ export class CreateVoterDto {
   name!: string;
 
   @IsString()
-  @MinLength(6)
-  @MaxLength(30)
+  @Matches(/^\d{10}$/, { message: 'contactNumber must be exactly 10 digits' })
   contactNumber!: string;
 
   @IsString()
   @MinLength(3)
   @MaxLength(50)
+  @Matches(/^[a-zA-Z0-9]+$/, { message: 'voterId must be alphanumeric' })
   voterId!: string;
 
   // Dynamic hierarchy fields - validated based on candidate's electionType

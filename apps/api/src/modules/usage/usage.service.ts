@@ -10,9 +10,12 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuthenticatedUser } from '../auth/types/auth.types';
 
 export interface UsageSummary {
   totalVoters: number;
+  totalVoted: number;
+  totalPending: number;
   totalSubUsers: number;
   exportsThisMonth: number;
   votersAddedThisMonth: number;
@@ -35,6 +38,18 @@ export interface UsageSnapshot {
   totalUsers: number;
 }
 
+export interface UsageUserScopeItem {
+  userId: string;
+  username: string;
+  fullName: string | null;
+  email: string | null;
+  candidateId: string;
+  candidateName: string;
+  totalSubUsers: number;
+  totalVoters: number;
+  totalVoted: number;
+}
+
 @Injectable()
 export class UsageService {
   private readonly logger = new Logger(UsageService.name);
@@ -48,17 +63,46 @@ export class UsageService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  private resolveCandidateScope(user: AuthenticatedUser, targetCandidateId?: string) {
+    if (user.role !== 'SUPER_ADMIN') {
+      return user.candidateId;
+    }
+    return targetCandidateId || undefined;
+  }
+
+  private getScope(user: AuthenticatedUser, targetCandidateId?: string) {
+    const scopedCandidateId = this.resolveCandidateScope(user, targetCandidateId);
+
+    if (!scopedCandidateId) {
+      return {
+        voterWhereBase: { isDeleted: false } as const,
+        userWhereBase: { role: 'SUB_USER' as const },
+        auditWhereBase: { action: 'CSV_EXPORTED' as const },
+        scopedCandidateId: undefined,
+      };
+    }
+
+    return {
+      voterWhereBase: { candidateId: scopedCandidateId, isDeleted: false } as const,
+      userWhereBase: { candidateId: scopedCandidateId, role: 'SUB_USER' as const },
+      auditWhereBase: { candidateId: scopedCandidateId, action: 'CSV_EXPORTED' as const },
+      scopedCandidateId,
+    };
+  }
+
   /**
    * Get current usage summary for a candidate
    */
-  async getUsageSummary(candidateId: string): Promise<UsageSummary> {
+  async getUsageSummary(user: AuthenticatedUser, targetCandidateId?: string): Promise<UsageSummary> {
+    const scope = this.getScope(user, targetCandidateId);
     const now = new Date();
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
     // Execute all counts in parallel
     const [
       totalVoters,
+      totalVoted,
+      totalPending,
       totalSubUsers,
       exportsThisMonth,
       votersAddedThisMonth,
@@ -66,19 +110,34 @@ export class UsageService {
     ] = await Promise.all([
       // Total active voters
       this.prisma.voter.count({
-        where: { candidateId, isDeleted: false },
+        where: scope.voterWhereBase,
+      }),
+
+      // Total voted
+      this.prisma.voter.count({
+        where: {
+          ...scope.voterWhereBase,
+          voted: true,
+        },
+      }),
+
+      // Total pending (not voted)
+      this.prisma.voter.count({
+        where: {
+          ...scope.voterWhereBase,
+          voted: false,
+        },
       }),
 
       // Total sub-users
       this.prisma.user.count({
-        where: { candidateId, role: 'SUB_USER' },
+        where: scope.userWhereBase,
       }),
 
       // Exports this month
       this.prisma.auditLog.count({
         where: {
-          candidateId,
-          action: 'CSV_EXPORTED',
+          ...scope.auditWhereBase,
           createdAt: { gte: firstDayOfMonth },
         },
       }),
@@ -86,17 +145,15 @@ export class UsageService {
       // Voters added this month
       this.prisma.voter.count({
         where: {
-          candidateId,
-          isDeleted: false,
+          ...scope.voterWhereBase,
           createdAt: { gte: firstDayOfMonth },
         },
       }),
 
-      // Voters last month (for growth calculation)
+      // Voters before this month (for growth calculation)
       this.prisma.voter.count({
         where: {
-          candidateId,
-          isDeleted: false,
+          ...scope.voterWhereBase,
           createdAt: { lt: firstDayOfMonth },
         },
       }),
@@ -112,6 +169,8 @@ export class UsageService {
 
     return {
       totalVoters,
+      totalVoted,
+      totalPending,
       totalSubUsers,
       exportsThisMonth,
       votersAddedThisMonth,
@@ -122,8 +181,8 @@ export class UsageService {
   /**
    * Get usage with limits and percentages
    */
-  async getUsageWithLimits(candidateId: string): Promise<UsageLimits> {
-    const summary = await this.getUsageSummary(candidateId);
+  async getUsageWithLimits(user: AuthenticatedUser, targetCandidateId?: string): Promise<UsageLimits> {
+    const summary = await this.getUsageSummary(user, targetCandidateId);
     const limits = this.DEFAULT_LIMITS;
 
     return {
@@ -140,9 +199,15 @@ export class UsageService {
    * Get historical usage snapshots
    * Note: UsageSnapshot model will be available after running prisma migrate
    */
-  async getUsageHistory(candidateId: string): Promise<UsageSnapshot[]> {
+  async getUsageHistory(user: AuthenticatedUser, targetCandidateId?: string): Promise<UsageSnapshot[]> {
+    const scopedCandidateId = this.resolveCandidateScope(user, targetCandidateId);
+
+    if (!scopedCandidateId) {
+      return [];
+    }
+
     const snapshots = await this.prisma.usageSnapshot.findMany({
-      where: { candidateId },
+      where: { candidateId: scopedCandidateId },
       orderBy: { month: 'desc' },
       take: 12, // Last 12 months
     });
@@ -163,7 +228,14 @@ export class UsageService {
     const now = new Date();
     const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-    const summary = await this.getUsageSummary(candidateId);
+    const summary = await this.getUsageSummary({
+      id: 'system',
+      username: 'system',
+      role: 'ADMIN',
+      mfaEnabled: false,
+      candidateId,
+      electionLevel: null,
+    });
 
     // Upsert to handle re-runs
     await this.prisma.usageSnapshot.upsert({
@@ -232,8 +304,8 @@ export class UsageService {
   /**
    * Check if candidate is approaching limits
    */
-  async checkLimitWarnings(candidateId: string): Promise<string[]> {
-    const usage = await this.getUsageWithLimits(candidateId);
+  async checkLimitWarnings(user: AuthenticatedUser, targetCandidateId?: string): Promise<string[]> {
+    const usage = await this.getUsageWithLimits(user, targetCandidateId);
     const warnings: string[] = [];
 
     if (usage.voterUsagePercent >= 90) {
@@ -256,12 +328,14 @@ export class UsageService {
   /**
    * Get detailed export history
    */
-  async getExportHistory(candidateId: string, limit = 20) {
+  async getExportHistory(user: AuthenticatedUser, limit = 20, targetCandidateId?: string) {
+    const scopedCandidateId = this.resolveCandidateScope(user, targetCandidateId);
+    const where = scopedCandidateId
+      ? { candidateId: scopedCandidateId, action: 'CSV_EXPORTED' as const }
+      : { action: 'CSV_EXPORTED' as const };
+
     const exports = await this.prisma.auditLog.findMany({
-      where: {
-        candidateId,
-        action: 'CSV_EXPORTED',
-      },
+      where,
       orderBy: { createdAt: 'desc' },
       take: limit,
     });
@@ -284,5 +358,107 @@ export class UsageService {
         metadata: e.metadata,
       };
     });
+  }
+
+  async getUsageUsers(user: AuthenticatedUser): Promise<UsageUserScopeItem[]> {
+    if (user.role !== 'SUPER_ADMIN') {
+      const admin = await this.prisma.user.findFirst({
+        where: { id: user.id },
+        select: {
+          id: true,
+          username: true,
+          fullName: true,
+          email: true,
+          candidateId: true,
+          candidate: { select: { fullName: true } },
+        },
+      });
+
+      if (!admin || !admin.candidateId) {
+        return [];
+      }
+
+      const [totalSubUsers, totalVoters, totalVoted] = await Promise.all([
+        this.prisma.user.count({ where: { candidateId: admin.candidateId, role: 'SUB_USER' } }),
+        this.prisma.voter.count({ where: { candidateId: admin.candidateId, isDeleted: false } }),
+        this.prisma.voter.count({ where: { candidateId: admin.candidateId, isDeleted: false, voted: true } }),
+      ]);
+
+      return [
+        {
+          userId: admin.id,
+          username: admin.username,
+          fullName: admin.fullName,
+          email: admin.email,
+          candidateId: admin.candidateId,
+          candidateName: admin.candidate?.fullName ?? admin.username,
+          totalSubUsers,
+          totalVoters,
+          totalVoted,
+        },
+      ];
+    }
+
+    const admins = await this.prisma.user.findMany({
+      where: { role: 'ADMIN', candidateId: { not: null } },
+      select: {
+        id: true,
+        username: true,
+        fullName: true,
+        email: true,
+        candidateId: true,
+        candidate: {
+          select: {
+            id: true,
+            fullName: true,
+          },
+        },
+      },
+      orderBy: { username: 'asc' },
+    });
+
+    const candidateIds = admins
+      .map((admin) => admin.candidateId)
+      .filter((value): value is string => Boolean(value));
+
+    if (candidateIds.length === 0) {
+      return [];
+    }
+
+    const [subUserCounts, voterCounts, votedCounts] = await Promise.all([
+      this.prisma.user.groupBy({
+        by: ['candidateId'],
+        where: { role: 'SUB_USER', candidateId: { in: candidateIds } },
+        _count: { id: true },
+      }),
+      this.prisma.voter.groupBy({
+        by: ['candidateId'],
+        where: { candidateId: { in: candidateIds }, isDeleted: false },
+        _count: { id: true },
+      }),
+      this.prisma.voter.groupBy({
+        by: ['candidateId'],
+        where: { candidateId: { in: candidateIds }, isDeleted: false, voted: true },
+        _count: { id: true },
+      }),
+    ]);
+
+    const subUserMap = new Map(subUserCounts.map((row) => [row.candidateId, row._count.id]));
+    const voterMap = new Map(voterCounts.map((row) => [row.candidateId, row._count.id]));
+    const votedMap = new Map(votedCounts.map((row) => [row.candidateId, row._count.id]));
+
+    return admins
+      .filter((admin): admin is typeof admin & { candidateId: string } => Boolean(admin.candidateId))
+      .map((admin) => ({
+        userId: admin.id,
+        username: admin.username,
+        fullName: admin.fullName,
+        email: admin.email,
+        candidateId: admin.candidateId,
+        candidateName: admin.candidate?.fullName ?? admin.username,
+        totalSubUsers: subUserMap.get(admin.candidateId) ?? 0,
+        totalVoters: voterMap.get(admin.candidateId) ?? 0,
+        totalVoted: votedMap.get(admin.candidateId) ?? 0,
+      }));
   }
 }

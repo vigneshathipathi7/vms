@@ -53,6 +53,7 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
   const [targetZoneId, setTargetZoneId] = useState('');
   const [openContact, setOpenContact] = useState<Voter | null>(null);
   const [editState, setEditState] = useState<EditFormState | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const debouncedSearch = useDebouncedValue(search, 300);
   const debouncedAddress = useDebouncedValue(address, 300);
@@ -309,6 +310,22 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
 
   function onEditSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (!editState) {
+      return;
+    }
+
+    if (!/^\d{10}$/.test(editState.contactNumber)) {
+      setEditError('Contact number must be exactly 10 digits');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9]+$/.test(editState.voterId)) {
+      setEditError('Voter ID must be alphanumeric');
+      return;
+    }
+
+    setEditError(null);
     updateMutation.mutate();
   }
 
@@ -327,6 +344,7 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
   }
 
   function openEdit(voter: Voter) {
+    setEditError(null);
     setEditState({
       id: voter.id,
       name: voter.name,
@@ -656,16 +674,33 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
                 className="rounded-xl border px-3 py-2.5 text-sm"
                 value={editState.contactNumber}
                 onChange={(event) =>
-                  setEditState((prev) => (prev ? { ...prev, contactNumber: event.target.value } : prev))
+                  setEditState((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          contactNumber: event.target.value.replace(/\D/g, '').slice(0, 10),
+                        }
+                      : prev,
+                  )
                 }
                 placeholder="Contact"
+                inputMode="numeric"
+                maxLength={10}
+                pattern="[0-9]{10}"
                 required
               />
               <input
                 className="rounded-xl border px-3 py-2.5 text-sm"
                 value={editState.voterId}
-                onChange={(event) => setEditState((prev) => (prev ? { ...prev, voterId: event.target.value } : prev))}
+                onChange={(event) =>
+                  setEditState((prev) =>
+                    prev
+                      ? { ...prev, voterId: event.target.value.replace(/[^a-zA-Z0-9]/g, '') }
+                      : prev,
+                  )
+                }
                 placeholder="Voter ID"
+                pattern="[a-zA-Z0-9]+"
                 required
               />
               <select
@@ -737,6 +772,7 @@ export function ZoneDetailsPage({ currentUser }: { currentUser: AuthUser | null 
                 Mark as voted
               </label>
             </div>
+            {editError && <p className="text-sm text-red-600">{editError}</p>}
             <div className="flex gap-2">
               <button
                 className="rounded-xl bg-slate-900 px-3 py-2.5 text-sm font-medium text-white disabled:opacity-60"

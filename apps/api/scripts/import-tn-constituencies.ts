@@ -32,6 +32,14 @@ printMasterDataStatus();
 
 const prisma = new PrismaClient();
 
+const DISTRICT_NAME_ALIASES: Record<string, string> = {
+  Villupuram: 'Viluppuram',
+};
+
+function normalizeDistrictName(name: string): string {
+  return DISTRICT_NAME_ALIASES[name] ?? name;
+}
+
 // ============================================================================
 // TAMIL NADU DISTRICTS (38 total)
 // ============================================================================
@@ -563,7 +571,7 @@ async function main() {
     let acExists = 0;
     
     for (const ac of ASSEMBLY_CONSTITUENCIES) {
-      const districtId = districtMap.get(ac.district);
+      const districtId = districtMap.get(normalizeDistrictName(ac.district));
       const parliamentaryConstituencyId = pcMap.get(ac.parliamentaryConstituency);
       
       if (!districtId) {

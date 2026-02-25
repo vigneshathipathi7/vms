@@ -89,6 +89,52 @@ export interface DashboardStatsResponse {
     pending: number;
     voted: number;
   };
+  superAdminVoters?: {
+    id: string;
+    name: string;
+    voterId: string;
+    contactNumber: string;
+    address: string;
+    voted: boolean;
+    createdAt: string;
+    state?: string | null;
+    constituency?: string | null;
+    assemblyConstituency?: string | null;
+    addedBy: {
+      id: string;
+      username: string;
+      fullName?: string | null;
+      email?: string | null;
+    };
+    candidate: {
+      id: string;
+      fullName: string;
+      electionType: ElectionType;
+      contestingFor: string;
+      state: string | null;
+      district: string | null;
+      constituency: string | null;
+      assemblyConstituency: string | null;
+      taluk: string | null;
+    };
+    zone: {
+      id: string;
+      name: string;
+      type: 'RED' | 'GREEN' | 'ORANGE';
+    };
+    taluk?: {
+      id: string;
+      name: string;
+    } | null;
+    village?: {
+      id: string;
+      name: string;
+    } | null;
+    ward: {
+      id: string;
+      wardNumber: string;
+    };
+  }[];
 }
 
 export interface Voter {
@@ -259,6 +305,16 @@ export interface AccessRequestResponse {
   item: AccessRequest;
 }
 
+export interface AccessRequestUpdateResponse {
+  item: AccessRequest;
+  message: string;
+  setupLink?: string | null;
+  user?: {
+    id: string;
+    email: string;
+  };
+}
+
 export interface CreateAccessRequestPayload {
   fullName: string;
   phone: string;
@@ -283,6 +339,15 @@ export interface AccessRequestStatsResponse {
   approved: number;
   rejected: number;
   total: number;
+}
+
+export interface ValidateSetupTokenResponse {
+  valid: boolean;
+  email: string;
+}
+
+export interface SetupPasswordResponse {
+  message: string;
 }
 
 // Location Types

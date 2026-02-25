@@ -39,10 +39,12 @@ export class AnalyticsController {
   @Throttle({ default: { limit: 30, ttl: 60000 } })
   async getDailyVoters(
     @CurrentUser() user: AuthenticatedUser,
+    @Query('candidateId') candidateId?: string,
     @Query('range') range?: '7d' | '30d' | '90d' | 'all',
   ) {
+    const scopedCandidateId = user.role === 'SUPER_ADMIN' ? candidateId : user.candidateId;
     return this.analyticsService.getDailyVoterAdditions(
-      user.candidateId,
+      scopedCandidateId,
       range || '30d',
     );
   }
@@ -54,8 +56,12 @@ export class AnalyticsController {
    */
   @Get('subuser-productivity')
   @Throttle({ default: { limit: 20, ttl: 60000 } })
-  async getSubUserProductivity(@CurrentUser() user: AuthenticatedUser) {
-    return this.analyticsService.getSubUserProductivity(user.candidateId);
+  async getSubUserProductivity(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('candidateId') candidateId?: string,
+  ) {
+    const scopedCandidateId = user.role === 'SUPER_ADMIN' ? candidateId : user.candidateId;
+    return this.analyticsService.getSubUserProductivity(scopedCandidateId);
   }
 
   /**
@@ -65,8 +71,12 @@ export class AnalyticsController {
    */
   @Get('voting-progress')
   @Throttle({ default: { limit: 30, ttl: 60000 } })
-  async getVotingProgress(@CurrentUser() user: AuthenticatedUser) {
-    return this.analyticsService.getVotingProgress(user.candidateId);
+  async getVotingProgress(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('candidateId') candidateId?: string,
+  ) {
+    const scopedCandidateId = user.role === 'SUPER_ADMIN' ? candidateId : user.candidateId;
+    return this.analyticsService.getVotingProgress(scopedCandidateId);
   }
 
   /**
@@ -76,17 +86,21 @@ export class AnalyticsController {
    */
   @Get('summary')
   @Throttle({ default: { limit: 30, ttl: 60000 } })
-  async getAnalyticsSummary(@CurrentUser() user: AuthenticatedUser) {
+  async getAnalyticsSummary(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('candidateId') candidateId?: string,
+  ) {
+    const scopedCandidateId = user.role === 'SUPER_ADMIN' ? candidateId : user.candidateId;
     // Log analytics access
     await this.auditService.logEvent({
       actorUserId: user.id,
       action: 'AUDIT_EXPORTED', // Reusing existing action for analytics access
       entityType: 'Analytics',
-      candidateId: user.candidateId,
-      metadata: { type: 'summary' },
+      candidateId: scopedCandidateId,
+      metadata: { type: 'summary', candidateId: scopedCandidateId ?? 'ALL' },
     });
 
-    return this.analyticsService.getAnalyticsSummary(user.candidateId);
+    return this.analyticsService.getAnalyticsSummary(scopedCandidateId);
   }
 
   /**
@@ -98,9 +112,11 @@ export class AnalyticsController {
   @Throttle({ default: { limit: 30, ttl: 60000 } })
   async getTopPerformers(
     @CurrentUser() user: AuthenticatedUser,
+    @Query('candidateId') candidateId?: string,
     @Query('limit') limit?: string,
   ) {
     const parsedLimit = limit ? Math.min(parseInt(limit, 10), 20) : 5;
-    return this.analyticsService.getTopPerformers(user.candidateId, parsedLimit);
+    const scopedCandidateId = user.role === 'SUPER_ADMIN' ? candidateId : user.candidateId;
+    return this.analyticsService.getTopPerformers(scopedCandidateId, parsedLimit);
   }
 }
