@@ -1,0 +1,29 @@
+{
+  "district": "Kallakurichi",
+  "constituencies": [
+    {
+      "name": "Tirukkoyilur",
+      "acCode": "76",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Ulundurpettai",
+      "acCode": "77",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Sankarapuram",
+      "acCode": "79",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Kallakurichi",
+      "acCode": "80",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

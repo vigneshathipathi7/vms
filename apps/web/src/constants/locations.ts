@@ -9,6 +9,17 @@ type DistrictUlbMap = Record<string, DistrictUlbWards>;
 
 const districtConfig = districtWardsRaw as DistrictConfig;
 
+const DISTRICT_NAME_ALIASES: Record<string, string> = {
+  Kanchipuram: 'Kancheepuram',
+  Kanyakumari: 'Kanniyakumari',
+  Sivaganga: 'Sivagangai',
+  Tiruvallur: 'Thiruvallur',
+};
+
+export function normalizeDistrictName(name: string) {
+  return DISTRICT_NAME_ALIASES[name] ?? name;
+}
+
 const normalized = Object.fromEntries(
   Object.entries(districtConfig).map(([district, ulbs]) => {
     const ulbMap = Object.fromEntries(

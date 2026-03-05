@@ -1,5 +1,4 @@
 import {
-  IsArray,
   IsEmail,
   IsOptional,
   IsString,
@@ -43,9 +42,4 @@ export class CreateSubUserDto {
   @IsOptional()
   @IsString()
   managedWardId?: string;
-
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  assignedWardIds?: string[];
 }

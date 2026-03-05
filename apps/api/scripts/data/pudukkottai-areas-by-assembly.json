@@ -1,0 +1,41 @@
+{
+  "district": "Pudukkottai",
+  "constituencies": [
+    {
+      "name": "Gandharvakottai",
+      "acCode": "177",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Viralimalai",
+      "acCode": "178",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Pudukkottai",
+      "acCode": "179",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Thirumayam",
+      "acCode": "180",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Alangudi",
+      "acCode": "181",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Aranthangi",
+      "acCode": "182",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

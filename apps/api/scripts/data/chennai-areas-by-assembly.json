@@ -1,0 +1,101 @@
+{
+  "district": "Chennai",
+  "constituencies": [
+    {
+      "name": "Dr. Radhakrishnan Nagar",
+      "acCode": "2",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Perambur",
+      "acCode": "3",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Kolathur",
+      "acCode": "4",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Villivakkam",
+      "acCode": "5",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Thiru-Vi-Ka-Nagar",
+      "acCode": "6",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Egmore",
+      "acCode": "7",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Royapuram",
+      "acCode": "8",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Harbour",
+      "acCode": "9",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Chepauk-Thiruvallikeni",
+      "acCode": "10",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Thousand Lights",
+      "acCode": "11",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Anna Nagar",
+      "acCode": "12",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Virugambakkam",
+      "acCode": "13",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Saidapet",
+      "acCode": "14",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "T. Nagar",
+      "acCode": "15",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Mylapore",
+      "acCode": "16",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Velachery",
+      "acCode": "17",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

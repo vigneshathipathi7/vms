@@ -1,4 +1,4 @@
-export type UserRoleValue = 'SUPER_ADMIN' | 'ADMIN' | 'SUB_USER';
+export type UserRoleValue = 'SUPER_ADMIN' | 'ADMIN' | 'SUB_ADMIN' | 'SUB_USER' | 'VOLUNTEER';
 
 export type ElectionTypeValue = 'LOCAL_BODY' | 'ASSEMBLY' | 'PARLIAMENT';
 

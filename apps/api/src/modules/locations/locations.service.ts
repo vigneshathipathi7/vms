@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthenticatedUser } from '../auth/types/auth.types';
 
@@ -11,7 +13,104 @@ import { AuthenticatedUser } from '../auth/types/auth.types';
  */
 @Injectable()
 export class LocationsService {
+  private areaMappingCache: Map<string, Map<string, string[]>> | null = null;
+
   constructor(private readonly prisma: PrismaService) {}
+
+  private normalize(value: string) {
+    return value
+      .toLowerCase()
+      .replace(/\(sc\)|\(st\)/g, '')
+      .replace(/[^a-z0-9]/g, '');
+  }
+
+  private getAreaDataDirectory() {
+    const candidates = [
+      path.resolve(process.cwd(), 'apps/api/scripts/data'),
+      path.resolve(process.cwd(), 'scripts/data'),
+      path.resolve(__dirname, '../../../scripts/data'),
+    ];
+
+    return candidates.find((candidate) => fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) ?? null;
+  }
+
+  private loadAreaMappingCache() {
+    if (this.areaMappingCache) {
+      return this.areaMappingCache;
+    }
+
+    const cache = new Map<string, Map<string, string[]>>();
+    const dataDir = this.getAreaDataDirectory();
+
+    if (!dataDir) {
+      this.areaMappingCache = cache;
+      return cache;
+    }
+
+    const files = fs
+      .readdirSync(dataDir)
+      .filter((fileName) => fileName.endsWith('-areas-by-assembly.json'));
+
+    for (const fileName of files) {
+      const filePath = path.resolve(dataDir, fileName);
+      const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as {
+        district?: string;
+        constituencies?: Array<{
+          name?: string;
+          urbanAreas?: string[];
+          ruralVillages?: string[];
+        }>;
+      };
+
+      if (!parsed.district || !Array.isArray(parsed.constituencies)) {
+        continue;
+      }
+
+      const districtKey = this.normalize(parsed.district);
+      const districtMap = cache.get(districtKey) ?? new Map<string, string[]>();
+
+      for (const constituency of parsed.constituencies) {
+        if (!constituency?.name) {
+          continue;
+        }
+
+        const assemblyKey = this.normalize(constituency.name);
+        const areaNames = Array.from(
+          new Set(
+            [
+              ...(constituency.urbanAreas ?? []),
+              ...(constituency.ruralVillages ?? []),
+            ]
+              .map((value) => value.trim())
+              .filter((value) => value && !value.toLowerCase().includes('parts of')),
+          ),
+        );
+
+        districtMap.set(assemblyKey, areaNames);
+      }
+
+      cache.set(districtKey, districtMap);
+    }
+
+    this.areaMappingCache = cache;
+    return cache;
+  }
+
+  async getAreaNamesByAssembly(districtName: string, assemblyName: string) {
+    const mapping = this.loadAreaMappingCache();
+    const districtMap = mapping.get(this.normalize(districtName));
+
+    if (!districtMap) {
+      return { matched: false, areaNames: [] as string[] };
+    }
+
+    const areaNames = districtMap.get(this.normalize(assemblyName));
+    if (!areaNames) {
+      return { matched: false, areaNames: [] as string[] };
+    }
+
+    return { matched: true, areaNames };
+  }
 
   /**
    * Get all districts (SHARED globally - READ ONLY).
@@ -239,12 +338,14 @@ export class LocationsService {
     });
   }
 
+  
+
   /**
    * Get all Assembly Constituencies (SHARED globally - READ ONLY).
    * Optionally filter by district.
    */
   async getAssemblyConstituencies(districtId?: string) {
-    return this.prisma.assemblyConstituency.findMany({
+    const rows = await this.prisma.assemblyConstituency.findMany({
       where: districtId ? { districtId } : undefined,
       orderBy: [{ code: 'asc' }, { name: 'asc' }],
       select: {
@@ -257,6 +358,20 @@ export class LocationsService {
         parliamentaryConstituency: { select: { id: true, name: true } },
       },
     });
+
+    if (!districtId || rows.length === 0) {
+      return rows;
+    }
+
+    const districtKey = this.normalize(rows[0].district.name);
+    const mapping = this.loadAreaMappingCache();
+    const districtMap = mapping.get(districtKey);
+
+    if (!districtMap || districtMap.size === 0) {
+      return rows;
+    }
+
+    return rows.filter((row) => districtMap.has(this.normalize(row.name)));
   }
 
   /**

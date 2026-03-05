@@ -3,13 +3,49 @@ export class ApiError extends Error {
   payload: unknown;
 
   constructor(status: number, payload: unknown, message?: string) {
-    super(message ?? `Request failed with status ${status}`);
+    super(message ?? extractApiErrorMessage(payload) ?? `Request failed with status ${status}`);
     this.status = status;
     this.payload = payload;
   }
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000/api/v1';
+function extractApiErrorMessage(payload: unknown): string | null {
+  if (typeof payload === 'string') {
+    const text = payload.trim();
+    if (!text) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(text) as unknown;
+      return extractApiErrorMessage(parsed) ?? text;
+    } catch {
+      return text;
+    }
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    return null;
+  }
+
+  const message = (payload as { message?: unknown }).message;
+  if (typeof message === 'string') {
+    return message;
+  }
+
+  if (Array.isArray(message) && message.every((item) => typeof item === 'string')) {
+    return message.join(', ');
+  }
+
+  const error = (payload as { error?: unknown }).error;
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  return null;
+}
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
 export function buildQuery(params: Record<string, string | number | boolean | undefined>) {
   const search = new URLSearchParams();

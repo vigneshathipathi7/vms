@@ -9,7 +9,13 @@
     "lint": "eslint \"src/**/*.ts\"",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "prisma db seed"
+    "prisma:seed": "prisma db seed",
+    "migrate:hierarchy": "ts-node scripts/migrate-user-hierarchy.ts",
+    "migrate:hierarchy:dry": "ts-node scripts/migrate-user-hierarchy.ts --dry-run",
+    "generate:area-dataset": "ts-node scripts/generate-area-dataset.ts",
+    "generate:area-datasets:all": "ts-node scripts/generate-all-area-datasets.ts",
+    "import:chengalpattu-areas": "ts-node scripts/import-chengalpattu-areas.ts",
+    "import:chengalpattu-areas:live": "DRY_RUN=false ts-node scripts/import-chengalpattu-areas.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

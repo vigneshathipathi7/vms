@@ -1,0 +1,71 @@
+{
+  "district": "Salem",
+  "constituencies": [
+    {
+      "name": "Gangavalli",
+      "acCode": "81",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Attur",
+      "acCode": "82",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Yercaud",
+      "acCode": "83",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Omalur",
+      "acCode": "84",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Mettur",
+      "acCode": "85",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Edappadi",
+      "acCode": "86",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Sankari",
+      "acCode": "87",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Salem West",
+      "acCode": "88",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Salem North",
+      "acCode": "89",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Salem South",
+      "acCode": "90",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Veerapandi",
+      "acCode": "91",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

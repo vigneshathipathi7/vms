@@ -115,36 +115,14 @@ export class AccessRequestsService {
    * Validate hierarchy fields based on election type.
    */
   private validateHierarchy(payload: CreateAccessRequestDto): void {
-    switch (payload.electionType) {
-      case 'LOCAL_BODY':
-        if (!payload.district) {
-          throw new BadRequestException('district is required for LOCAL_BODY elections');
-        }
-        if (!payload.taluk) {
-          throw new BadRequestException('taluk is required for LOCAL_BODY elections');
-        }
-        break;
-
-      case 'ASSEMBLY':
-        if (!payload.district) {
-          throw new BadRequestException('district is required for ASSEMBLY elections');
-        }
-        if (!payload.constituency) {
-          throw new BadRequestException('constituency is required for ASSEMBLY elections');
-        }
-        break;
-
-      case 'PARLIAMENT':
-        if (!payload.state) {
-          throw new BadRequestException('state is required for PARLIAMENT elections');
-        }
-        if (!payload.constituency) {
-          throw new BadRequestException('constituency (parliamentary) is required for PARLIAMENT elections');
-        }
-        break;
-
-      default:
-        throw new BadRequestException(`Unknown election type: ${payload.electionType}`);
+    if (payload.electionType !== 'ASSEMBLY') {
+      throw new BadRequestException('Only ASSEMBLY (MLA) election type is supported');
+    }
+    if (!payload.district) {
+      throw new BadRequestException('district is required for ASSEMBLY elections');
+    }
+    if (!payload.constituency) {
+      throw new BadRequestException('constituency is required for ASSEMBLY elections');
     }
   }
 

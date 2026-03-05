@@ -1,0 +1,53 @@
+{
+  "district": "Tiruvannamalai",
+  "constituencies": [
+    {
+      "name": "Chengam",
+      "acCode": "62",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Tiruvannamalai",
+      "acCode": "63",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Kilpennathur",
+      "acCode": "64",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Kalasapakkam",
+      "acCode": "65",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Polur",
+      "acCode": "66",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Arani",
+      "acCode": "67",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Cheyyar",
+      "acCode": "68",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Vandavasi",
+      "acCode": "69",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

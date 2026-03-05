@@ -23,4 +23,16 @@ export class UpdateSubUserDto {
   @IsEmail()
   @MaxLength(254)
   email?: string;
+
+  @IsOptional()
+  @IsString()
+  managedWardId?: string;
+
+  @IsOptional()
+  @IsString()
+  managedVillageId?: string;
+
+  @IsOptional()
+  @IsString()
+  parentUserId?: string;
 }

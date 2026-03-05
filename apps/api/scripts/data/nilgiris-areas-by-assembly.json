@@ -1,0 +1,23 @@
+{
+  "district": "Nilgiris",
+  "constituencies": [
+    {
+      "name": "Udhagamandalam",
+      "acCode": "113",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Gudalur",
+      "acCode": "114",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Coonoor",
+      "acCode": "115",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

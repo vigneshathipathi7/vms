@@ -1,0 +1,185 @@
+{
+  "district": "Chengalpattu",
+  "constituencies": [
+    {
+      "name": "Sholinganallur",
+      "acCode": "27",
+      "urbanAreas": [
+        "Parts of Tambaram Corporation (previously Pammal, Anakaputhur)"
+      ],
+      "ruralVillages": []
+    },
+    {
+      "name": "Pallavaram",
+      "acCode": "30",
+      "urbanAreas": [
+        "Pallavaram Municipality",
+        "Pammal Municipality"
+      ],
+      "ruralVillages": []
+    },
+    {
+      "name": "Tambaram",
+      "acCode": "31",
+      "urbanAreas": [
+        "Tambaram Corporation"
+      ],
+      "ruralVillages": []
+    },
+    {
+      "name": "Chengalpattu",
+      "acCode": "32",
+      "urbanAreas": [
+        "Chengalpattu Municipality"
+      ],
+      "ruralBlock": "Kattankulathur Block",
+      "ruralVillages": [
+        "Alapakkam",
+        "Annangal",
+        "Athivakkam",
+        "Guruvenmedu",
+        "Kalvoy",
+        "Karanai Puthuchery",
+        "Karunilam",
+        "Kayarambedu",
+        "Keerapakkam",
+        "Kondamangalam",
+        "Kumizhi",
+        "Kunnavakkam",
+        "Mannivakkam",
+        "Melamaiyur",
+        "Nallampakkam",
+        "Nedunkunram",
+        "Ozhaloor",
+        "Paloor",
+        "Patravakkam",
+        "Pazhaveli",
+        "Periyapotheri",
+        "Perumattunallur",
+        "Pulipakkam",
+        "Reddipalayam",
+        "Singaperumalkoil",
+        "Thenmelpakkam",
+        "Thimmavaram",
+        "Thiruvadisoolam",
+        "Unamachery",
+        "Urapakkam",
+        "Vallam",
+        "Vandaloor",
+        "Veerapuram",
+        "Vengadamangalam",
+        "Vengadapuram",
+        "Villiampakkam"
+      ]
+    },
+    {
+      "name": "Madurantakam",
+      "acCode": "35",
+      "urbanAreas": [
+        "Madurantakam Municipality",
+        "Karunguzhi Town Panchayat"
+      ],
+      "ruralBlock": "Madurantakam Block",
+      "ruralVillages": [
+        "Keezavalam",
+        "Keelakandai",
+        "Kinar",
+        "Kumaravadi",
+        "Kunnathur",
+        "L.N.Puram",
+        "Mamandur",
+        "Mangalam",
+        "Meyyur",
+        "Munuthikuppam",
+        "Murukambakkam",
+        "Nallamur",
+        "Nallur",
+        "Neerpair",
+        "Nelli",
+        "Nelvoy",
+        "Nesapakkam",
+        "Nethapakkam",
+        "Netrampakkam",
+        "Onnambakkam",
+        "Padalam",
+        "Pakkam",
+        "Palamathur",
+        "Pazhayanur",
+        "Periyavenmani",
+        "Peruvelli",
+        "Pillapur",
+        "Pudupattu",
+        "Pulliyaranankotai",
+        "Saravambakkam",
+        "Sillavattam",
+        "Sirunallur",
+        "Sithandi",
+        "Soorai",
+        "Thonnadu",
+        "Vaiyauoor",
+        "Veeranakunnam",
+        "Vettur"
+      ]
+    },
+    {
+      "name": "Cheyyur",
+      "acCode": "34",
+      "urbanAreas": [
+        "Edaikazhinadu Town Panchayat"
+      ],
+      "ruralBlock": "Lathur Block",
+      "ruralVillages": [
+        "Adiyalacherry",
+        "Akkinambed",
+        "Ammanur",
+        "Anaicut",
+        "Cheyyur",
+        "Iranyasithi",
+        "Kadalur",
+        "Kadukupattu",
+        "Kalkulam",
+        "Kanathur",
+        "Keezhacherry",
+        "Kodur",
+        "Koovathur",
+        "Lathur",
+        "Mugaiyur",
+        "Nedumaram",
+        "Nemandam",
+        "Nerkunapattu",
+        "Pachambakkam",
+        "Parameswaramangalam",
+        "Pavunjur",
+        "Periyavelikadu",
+        "Perumbakkam",
+        "Pramankeni",
+        "Seekinakuppam",
+        "Seevadi",
+        "Sembur",
+        "Sengattur",
+        "Siruvankunam"
+      ]
+    },
+    {
+      "name": "Thiruporur",
+      "acCode": "33",
+      "urbanAreas": [
+        "Thiruporur Town Panchayat",
+        "Mamallapuram Town Panchayat"
+      ],
+      "ruralBlock": "Thiruporur Block",
+      "ruralVillages": [
+        "Alathur",
+        "Amoor",
+        "Illalur",
+        "K.R.Kuppam",
+        "Sembakkam",
+        "Sirudhavur",
+        "Sonalur",
+        "Thaiyur",
+        "Thazhambur",
+        "Thirunilai"
+      ]
+    }
+  ]
+}

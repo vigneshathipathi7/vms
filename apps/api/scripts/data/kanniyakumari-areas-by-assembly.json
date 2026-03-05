@@ -1,0 +1,47 @@
+{
+  "district": "Kanniyakumari",
+  "constituencies": [
+    {
+      "name": "Kanniyakumari",
+      "acCode": "228",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Nagercoil",
+      "acCode": "229",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Colachel",
+      "acCode": "230",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Padmanabhapuram",
+      "acCode": "231",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Vilavancode",
+      "acCode": "232",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Killiyoor",
+      "acCode": "233",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Thiruvattar",
+      "acCode": "234",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

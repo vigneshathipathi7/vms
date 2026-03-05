@@ -1,0 +1,53 @@
+{
+  "district": "Cuddalore",
+  "constituencies": [
+    {
+      "name": "Vriddhachalam",
+      "acCode": "151",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Neyveli",
+      "acCode": "152",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Panruti",
+      "acCode": "153",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Cuddalore",
+      "acCode": "154",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Kurinjipadi",
+      "acCode": "155",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Bhuvanagiri",
+      "acCode": "156",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Chidambaram",
+      "acCode": "157",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Kattumannarkoil",
+      "acCode": "158",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

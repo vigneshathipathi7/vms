@@ -3,38 +3,79 @@ import { apiFetch, buildQuery } from '../services/api';
 import { AuditVoterAdditionsResponse } from '../types/api';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { useState } from 'react';
-
-interface UsageUserScopeItem {
-  userId: string;
-  username: string;
-  fullName: string | null;
-  email: string | null;
-  candidateId: string;
-  candidateName: string;
-}
+import { SubUsersResponse } from '../types/api';
 
 export function AuditPage() {
   const currentUser = useCurrentUser();
   const isSuperAdmin = currentUser.user?.role === 'SUPER_ADMIN';
-  const [selectedCandidateId, setSelectedCandidateId] = useState<string>('ALL');
+  const isAdmin = currentUser.user?.role === 'ADMIN';
+  const isSubAdmin = currentUser.user?.role === 'SUB_ADMIN';
+  const [selectedAdminId, setSelectedAdminId] = useState<string>('ALL');
+  const [selectedFocusUserId, setSelectedFocusUserId] = useState<string>('ALL');
+  const [selectedAreaSecretaryId, setSelectedAreaSecretaryId] = useState<string>('ALL');
+  const [selectedWardMemberId, setSelectedWardMemberId] = useState<string>('ALL');
+  const [selectedVolunteerId, setSelectedVolunteerId] = useState<string>('ALL');
 
-  const candidateScopeQuery =
-    isSuperAdmin && selectedCandidateId !== 'ALL'
-      ? buildQuery({ candidateId: selectedCandidateId })
-      : '';
-
-  const usageUsersQuery = useQuery({
-    queryKey: ['usage', 'users', 'audit-selector'],
-    queryFn: () => apiFetch<UsageUserScopeItem[]>('/usage/users'),
-    enabled: isSuperAdmin,
-    refetchInterval: isSuperAdmin ? 5000 : false,
-    refetchOnWindowFocus: true,
+  const subUsersQuery = useQuery({
+    queryKey: ['users', 'sub-users', 'audit-scope'],
+    queryFn: () => apiFetch<SubUsersResponse>('/users/sub-users'),
+    enabled: isSubAdmin || isAdmin || isSuperAdmin,
   });
 
+  const superAdminAdminOptions = (subUsersQuery.data?.items ?? []).filter(
+    (item) => item.role === 'ADMIN',
+  );
+
+  const areaSecretaryOptions = isSuperAdmin
+    ? (subUsersQuery.data?.items ?? []).filter(
+        (item) => item.role === 'SUB_ADMIN' && item.parentUserId === selectedAdminId,
+      )
+    : (subUsersQuery.data?.items ?? []).filter(
+        (item) => item.role === 'SUB_ADMIN' && (!currentUser.user?.id || item.parentUserId === currentUser.user.id),
+      );
+
+  const wardMemberOptions = isSuperAdmin || isAdmin
+    ? (subUsersQuery.data?.items ?? []).filter(
+        (item) => item.role === 'SUB_USER' && item.parentUserId === selectedAreaSecretaryId,
+      )
+    : (subUsersQuery.data?.items ?? []).filter(
+        (item) => item.role === 'SUB_USER' && item.parentUserId === currentUser.user?.id,
+      );
+
+  const volunteerOptions = (subUsersQuery.data?.items ?? []).filter(
+    (item) => item.role === 'VOLUNTEER' && item.parentUserId === selectedWardMemberId,
+  );
+
+  const effectiveFocusUserId = isSuperAdmin
+    ? selectedVolunteerId !== 'ALL'
+      ? selectedVolunteerId
+      : selectedWardMemberId !== 'ALL'
+        ? selectedWardMemberId
+        : selectedAreaSecretaryId !== 'ALL'
+          ? selectedAreaSecretaryId
+          : selectedAdminId !== 'ALL'
+            ? selectedAdminId
+            : undefined
+    : isAdmin
+      ? selectedWardMemberId !== 'ALL'
+        ? selectedWardMemberId
+        : selectedAreaSecretaryId !== 'ALL'
+          ? selectedAreaSecretaryId
+          : undefined
+      : isSubAdmin && selectedFocusUserId !== 'ALL'
+        ? selectedFocusUserId
+        : undefined;
+
+  const queryScope = {
+    focusUserId: effectiveFocusUserId,
+  };
+
+  const scopeQuery = buildQuery(queryScope);
+
   const summaryQuery = useQuery({
-    queryKey: ['audit', 'voter-additions', selectedCandidateId],
+    queryKey: ['audit', 'voter-additions', selectedAdminId, selectedFocusUserId, selectedAreaSecretaryId, selectedWardMemberId, selectedVolunteerId],
     queryFn: () =>
-      apiFetch<AuditVoterAdditionsResponse>(`/audit/voter-additions${candidateScopeQuery}`),
+      apiFetch<AuditVoterAdditionsResponse>(`/audit/voter-additions${scopeQuery}`),
     refetchInterval: isSuperAdmin ? 5000 : false,
     refetchOnWindowFocus: true,
   });
@@ -48,6 +89,51 @@ export function AuditPage() {
   }
 
   const data = summaryQuery.data;
+  const hierarchyUsers = subUsersQuery.data?.items ?? [];
+  const parentByUserId = new Map(hierarchyUsers.map((item) => [item.id, item.parentUserId]));
+
+  const areaSecretaryCountByAdmin = new Map<string, number>();
+  const wardMemberCountByAreaSecretary = new Map<string, number>();
+  const volunteerCountByWardMember = new Map<string, number>();
+
+  hierarchyUsers.forEach((item) => {
+    if (item.role === 'SUB_ADMIN' && item.parentUserId) {
+      areaSecretaryCountByAdmin.set(
+        item.parentUserId,
+        (areaSecretaryCountByAdmin.get(item.parentUserId) ?? 0) + 1,
+      );
+    }
+    if (item.role === 'SUB_USER' && item.parentUserId) {
+      wardMemberCountByAreaSecretary.set(
+        item.parentUserId,
+        (wardMemberCountByAreaSecretary.get(item.parentUserId) ?? 0) + 1,
+      );
+    }
+    if (item.role === 'VOLUNTEER' && item.parentUserId) {
+      volunteerCountByWardMember.set(
+        item.parentUserId,
+        (volunteerCountByWardMember.get(item.parentUserId) ?? 0) + 1,
+      );
+    }
+  });
+
+  const tableItems = isSuperAdmin
+    ? selectedVolunteerId !== 'ALL'
+      ? data.items.filter((item) => item.userId === selectedVolunteerId)
+      : selectedWardMemberId !== 'ALL'
+        ? data.items.filter(
+            (item) => item.role === 'VOLUNTEER' && parentByUserId.get(item.userId) === selectedWardMemberId,
+          )
+        : selectedAreaSecretaryId !== 'ALL'
+          ? data.items.filter(
+              (item) => item.role === 'SUB_USER' && parentByUserId.get(item.userId) === selectedAreaSecretaryId,
+            )
+          : selectedAdminId !== 'ALL'
+            ? data.items.filter(
+                (item) => item.role === 'SUB_ADMIN' && parentByUserId.get(item.userId) === selectedAdminId,
+              )
+            : data.items.filter((item) => item.role === 'ADMIN')
+    : data.items;
 
   return (
     <section className="space-y-6">
@@ -64,36 +150,269 @@ export function AuditPage() {
 
       {isSuperAdmin && (
         <div className="rounded-xl border bg-white p-4 shadow-sm">
+          {selectedVolunteerId !== 'ALL' ? (
+            <div className="flex items-center justify-between rounded-xl bg-indigo-50 px-3 py-2 text-sm text-indigo-700">
+              <span>
+                Showing volunteers under: {volunteerOptions.find((item) => item.id === selectedVolunteerId)?.fullName
+                  || volunteerOptions.find((item) => item.id === selectedVolunteerId)?.username
+                  || 'Selected User'}
+              </span>
+              <button
+                className="rounded-lg border border-indigo-200 bg-white px-2 py-1 text-xs font-medium text-indigo-700"
+                type="button"
+                onClick={() => setSelectedVolunteerId('ALL')}
+              >
+                Back to volunteers
+              </button>
+            </div>
+          ) : selectedWardMemberId !== 'ALL' ? (
+            <div>
+              <div className="mb-3 flex items-center justify-between rounded-xl bg-indigo-50 px-3 py-2 text-sm text-indigo-700">
+                <span>
+                  Showing volunteers under ward member: {wardMemberOptions.find((item) => item.id === selectedWardMemberId)?.fullName
+                    || wardMemberOptions.find((item) => item.id === selectedWardMemberId)?.username
+                    || 'Selected User'}
+                </span>
+                <button
+                  className="rounded-lg border border-indigo-200 bg-white px-2 py-1 text-xs font-medium text-indigo-700"
+                  type="button"
+                  onClick={() => {
+                    setSelectedWardMemberId('ALL');
+                    setSelectedVolunteerId('ALL');
+                  }}
+                >
+                  Back to ward members
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {volunteerOptions.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="rounded-lg border px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-50"
+                    onClick={() => setSelectedVolunteerId(item.id)}
+                  >
+                    {item.fullName || item.username}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : selectedAreaSecretaryId !== 'ALL' ? (
+            <div>
+              <div className="mb-3 flex items-center justify-between rounded-xl bg-indigo-50 px-3 py-2 text-sm text-indigo-700">
+                <span>
+                  Showing ward members under area secretary: {areaSecretaryOptions.find((item) => item.id === selectedAreaSecretaryId)?.fullName
+                    || areaSecretaryOptions.find((item) => item.id === selectedAreaSecretaryId)?.username
+                    || 'Selected User'}
+                </span>
+                <button
+                  className="rounded-lg border border-indigo-200 bg-white px-2 py-1 text-xs font-medium text-indigo-700"
+                  type="button"
+                  onClick={() => {
+                    setSelectedAreaSecretaryId('ALL');
+                    setSelectedWardMemberId('ALL');
+                    setSelectedVolunteerId('ALL');
+                  }}
+                >
+                  Back to area secretaries
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {wardMemberOptions.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="rounded-lg border px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-50"
+                    onClick={() => {
+                      setSelectedWardMemberId(item.id);
+                      setSelectedVolunteerId('ALL');
+                    }}
+                  >
+                    {item.fullName || item.username}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : selectedAdminId !== 'ALL' ? (
+            <div>
+              <div className="mb-3 flex items-center justify-between rounded-xl bg-indigo-50 px-3 py-2 text-sm text-indigo-700">
+                <span>
+                  Showing area secretaries under admin: {superAdminAdminOptions.find((item) => item.id === selectedAdminId)?.fullName
+                    || superAdminAdminOptions.find((item) => item.id === selectedAdminId)?.username
+                    || 'Selected User'}
+                </span>
+                <button
+                  className="rounded-lg border border-indigo-200 bg-white px-2 py-1 text-xs font-medium text-indigo-700"
+                  type="button"
+                  onClick={() => {
+                    setSelectedAdminId('ALL');
+                    setSelectedAreaSecretaryId('ALL');
+                    setSelectedWardMemberId('ALL');
+                    setSelectedVolunteerId('ALL');
+                  }}
+                >
+                  Back to admins
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {areaSecretaryOptions.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="rounded-lg border px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-50"
+                    onClick={() => {
+                      setSelectedAreaSecretaryId(item.id);
+                      setSelectedWardMemberId('ALL');
+                      setSelectedVolunteerId('ALL');
+                    }}
+                  >
+                    {item.fullName || item.username}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <h3 className="mb-2 text-base font-semibold">Admin Scope</h3>
+              <div className="flex flex-wrap gap-2">
+                {superAdminAdminOptions.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="rounded-lg border px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-50"
+                    onClick={() => {
+                      setSelectedAdminId(item.id);
+                      setSelectedAreaSecretaryId('ALL');
+                      setSelectedWardMemberId('ALL');
+                      setSelectedVolunteerId('ALL');
+                    }}
+                  >
+                    {item.fullName || item.username}
+                  </button>
+                ))}
+                {subUsersQuery.isLoading && <p className="text-sm text-slate-500">Loading admins...</p>}
+                {!subUsersQuery.isLoading && superAdminAdminOptions.length === 0 && (
+                  <p className="text-sm text-slate-500">No admins found.</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="rounded-xl border bg-white p-4 shadow-sm">
+          {selectedWardMemberId !== 'ALL' ? (
+            <div className="flex items-center justify-between rounded-xl bg-indigo-50 px-3 py-2 text-sm text-indigo-700">
+              <span>
+                Showing volunteers under ward member:{' '}
+                {wardMemberOptions.find((item) => item.id === selectedWardMemberId)?.fullName
+                  || wardMemberOptions.find((item) => item.id === selectedWardMemberId)?.username
+                  || 'Selected User'}
+              </span>
+              <button
+                className="rounded-lg border border-indigo-200 bg-white px-2 py-1 text-xs font-medium text-indigo-700"
+                type="button"
+                onClick={() => setSelectedWardMemberId('ALL')}
+              >
+                Back to ward members
+              </button>
+            </div>
+          ) : selectedAreaSecretaryId !== 'ALL' ? (
+            <div>
+              <div className="mb-3 flex items-center justify-between rounded-xl bg-indigo-50 px-3 py-2 text-sm text-indigo-700">
+                <span>
+                  Showing ward members under area secretary:{' '}
+                  {areaSecretaryOptions.find((item) => item.id === selectedAreaSecretaryId)?.fullName
+                    || areaSecretaryOptions.find((item) => item.id === selectedAreaSecretaryId)?.username
+                    || 'Selected User'}
+                </span>
+                <button
+                  className="rounded-lg border border-indigo-200 bg-white px-2 py-1 text-xs font-medium text-indigo-700"
+                  type="button"
+                  onClick={() => {
+                    setSelectedAreaSecretaryId('ALL');
+                    setSelectedWardMemberId('ALL');
+                  }}
+                >
+                  Back to area secretaries
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {wardMemberOptions.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="rounded-lg border px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-50"
+                    onClick={() => setSelectedWardMemberId(item.id)}
+                  >
+                    {item.fullName || item.username}
+                  </button>
+                ))}
+                {wardMemberOptions.length === 0 && (
+                  <p className="text-sm text-slate-500">No ward members found under this area secretary.</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <h3 className="mb-2 text-base font-semibold">Area Secretary Scope</h3>
+              <div className="flex flex-wrap gap-2">
+                {areaSecretaryOptions.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="rounded-lg border px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-50"
+                    onClick={() => {
+                      setSelectedAreaSecretaryId(item.id);
+                      setSelectedWardMemberId('ALL');
+                    }}
+                  >
+                    {item.fullName || item.username}
+                  </button>
+                ))}
+                {subUsersQuery.isLoading && <p className="text-sm text-slate-500">Loading area secretaries...</p>}
+                {!subUsersQuery.isLoading && areaSecretaryOptions.length === 0 && (
+                  <p className="text-sm text-slate-500">No area secretaries found.</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {isSubAdmin && (
+        <div className="rounded-xl border bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-base font-semibold">Scope</h3>
+            <h3 className="text-base font-semibold">Ward Member Scope</h3>
             <button
               className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
-                selectedCandidateId === 'ALL' ? 'bg-slate-900 text-white' : 'text-slate-700'
+                selectedFocusUserId === 'ALL' ? 'bg-slate-900 text-white' : 'text-slate-700'
               }`}
               type="button"
-              onClick={() => setSelectedCandidateId('ALL')}
+              onClick={() => setSelectedFocusUserId('ALL')}
             >
-              All Users
+              All Ward Members
             </button>
           </div>
 
-          {usageUsersQuery.isLoading ? (
-            <p className="text-sm text-slate-500">Loading users...</p>
-          ) : usageUsersQuery.data && usageUsersQuery.data.length > 0 ? (
+          {subUsersQuery.isLoading ? (
+            <p className="text-sm text-slate-500">Loading ward members...</p>
+          ) : wardMemberOptions.length > 0 ? (
             <select
               className="w-full rounded-lg border px-3 py-2 text-sm"
-              value={selectedCandidateId}
-              onChange={(event) => setSelectedCandidateId(event.target.value)}
+              value={selectedFocusUserId}
+              onChange={(event) => setSelectedFocusUserId(event.target.value)}
             >
-              <option value="ALL">All Users</option>
-              {usageUsersQuery.data.map((item) => (
-                <option key={item.userId} value={item.candidateId}>
-                  {item.fullName || item.username} - {item.candidateName}
+              <option value="ALL">All Ward Members</option>
+              {wardMemberOptions.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.fullName || item.username}
                 </option>
               ))}
             </select>
           ) : (
-            <p className="text-sm text-slate-500">No users available.</p>
+            <p className="text-sm text-slate-500">No ward members found.</p>
           )}
         </div>
       )}
@@ -120,9 +439,58 @@ export function AuditPage() {
             </tr>
           </thead>
           <tbody>
-            {data.items.map((item) => (
+            {tableItems.map((item) => (
               <tr key={item.userId} className="border-b last:border-b-0">
-                <td className="px-2 py-2">{item.username}</td>
+                <td className="px-2 py-2">
+                  {isSuperAdmin && selectedAdminId === 'ALL' && item.role === 'ADMIN' ? (
+                    <button
+                      type="button"
+                      className="text-left text-indigo-700 hover:underline"
+                      onClick={() => {
+                        setSelectedAdminId(item.userId);
+                        setSelectedAreaSecretaryId('ALL');
+                        setSelectedWardMemberId('ALL');
+                        setSelectedVolunteerId('ALL');
+                      }}
+                    >
+                      {item.username}
+                      <span className="ml-1 text-xs text-slate-500">
+                        ({areaSecretaryCountByAdmin.get(item.userId) ?? 0} area secretaries)
+                      </span>
+                    </button>
+                  ) : isSuperAdmin && selectedAdminId !== 'ALL' && selectedAreaSecretaryId === 'ALL' && item.role === 'SUB_ADMIN' ? (
+                    <button
+                      type="button"
+                      className="text-left text-indigo-700 hover:underline"
+                      onClick={() => {
+                        setSelectedAreaSecretaryId(item.userId);
+                        setSelectedWardMemberId('ALL');
+                        setSelectedVolunteerId('ALL');
+                      }}
+                    >
+                      {item.username}
+                      <span className="ml-1 text-xs text-slate-500">
+                        ({wardMemberCountByAreaSecretary.get(item.userId) ?? 0} ward members)
+                      </span>
+                    </button>
+                  ) : isSuperAdmin && selectedAreaSecretaryId !== 'ALL' && selectedWardMemberId === 'ALL' && item.role === 'SUB_USER' ? (
+                    <button
+                      type="button"
+                      className="text-left text-indigo-700 hover:underline"
+                      onClick={() => {
+                        setSelectedWardMemberId(item.userId);
+                        setSelectedVolunteerId('ALL');
+                      }}
+                    >
+                      {item.username}
+                      <span className="ml-1 text-xs text-slate-500">
+                        ({volunteerCountByWardMember.get(item.userId) ?? 0} volunteers)
+                      </span>
+                    </button>
+                  ) : (
+                    item.username
+                  )}
+                </td>
                 <td className="px-2 py-2">{item.role}</td>
                 <td className="px-2 py-2">{item.votersAddedCount}</td>
                 <td className="px-2 py-2">
@@ -130,6 +498,23 @@ export function AuditPage() {
                 </td>
               </tr>
             ))}
+            {tableItems.length === 0 && (
+              <tr>
+                <td className="px-2 py-3 text-slate-500" colSpan={4}>
+                  {isSuperAdmin
+                    ? selectedVolunteerId !== 'ALL'
+                      ? 'No audit rows found for selected volunteer.'
+                      : selectedWardMemberId !== 'ALL'
+                        ? 'No volunteers found under selected ward member.'
+                        : selectedAreaSecretaryId !== 'ALL'
+                          ? 'No ward members found under selected area secretary.'
+                          : selectedAdminId !== 'ALL'
+                            ? 'No area secretaries found under selected admin.'
+                            : 'No admins found.'
+                    : 'No audit rows found.'}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

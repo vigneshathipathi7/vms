@@ -44,13 +44,16 @@ export class UsersController {
   }
 
   @Get('sub-users')
-  @Roles('ADMIN')
-  getSubUsers(@CurrentUser() user: AuthenticatedUser) {
-    return this.usersService.listSubUsers(user.candidateId);
+  @Roles('ADMIN', 'SUB_ADMIN', 'SUB_USER', 'SUPER_ADMIN')
+  getSubUsers(@CurrentUser() user: AuthenticatedUser | undefined) {
+    if (!user) {
+      throw new UnauthorizedException('Unauthenticated');
+    }
+    return this.usersService.listSubUsers(user);
   }
 
   @Post('sub-users')
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'SUB_ADMIN', 'SUB_USER')
   createSubUser(
     @Body() body: CreateSubUserDto,
     @CurrentUser() user: AuthenticatedUser | undefined,
@@ -62,7 +65,7 @@ export class UsersController {
   }
 
   @Patch('sub-users/:id')
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'SUB_ADMIN', 'SUB_USER', 'SUPER_ADMIN')
   updateSubUser(
     @Param('id') id: string,
     @Body() body: UpdateSubUserDto,
@@ -75,7 +78,7 @@ export class UsersController {
   }
 
   @Delete('sub-users/:id')
-  @Roles('ADMIN')
+  @Roles('ADMIN', 'SUB_ADMIN', 'SUB_USER', 'SUPER_ADMIN')
   deleteSubUser(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser | undefined,

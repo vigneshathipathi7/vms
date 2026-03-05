@@ -4,7 +4,7 @@
  * 
  * Visual insights into campaign data:
  * - Daily voter additions chart
- * - Sub-user productivity table
+ * - Team member productivity table
  * - Voting progress by zone
  */
 
@@ -12,6 +12,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiFetch, buildQuery } from '../services/api';
 import { useCurrentUser } from '../hooks/useCurrentUser';
+import { SubUsersResponse } from '../types/api';
 
 interface DailyVoterData {
   date: string;
@@ -61,50 +62,90 @@ interface TopPerformer {
   weeklyVoted: number;
 }
 
-interface UsageUserScopeItem {
-  userId: string;
-  username: string;
-  fullName: string | null;
-  email: string | null;
-  candidateId: string;
-  candidateName: string;
-}
-
 type DateRange = '7d' | '30d' | '90d' | 'all';
 
 export function AnalyticsPage() {
   const [dateRange, setDateRange] = React.useState<DateRange>('30d');
-  const [selectedCandidateId, setSelectedCandidateId] = React.useState<string>('ALL');
+  const [selectedAdminId, setSelectedAdminId] = React.useState<string>('ALL');
+  const [selectedFocusUserId, setSelectedFocusUserId] = React.useState<string>('ALL');
+  const [selectedAreaSecretaryId, setSelectedAreaSecretaryId] = React.useState<string>('ALL');
+  const [selectedWardMemberId, setSelectedWardMemberId] = React.useState<string>('ALL');
+  const [selectedVolunteerId, setSelectedVolunteerId] = React.useState<string>('ALL');
   const currentUser = useCurrentUser();
   const isSuperAdmin = currentUser.user?.role === 'SUPER_ADMIN';
+  const isAdmin = currentUser.user?.role === 'ADMIN';
+  const isSubAdmin = currentUser.user?.role === 'SUB_ADMIN';
 
-  const candidateScopeQuery =
-    isSuperAdmin && selectedCandidateId !== 'ALL'
-      ? buildQuery({ candidateId: selectedCandidateId })
-      : '';
-
-  const usageUsersQuery = useQuery({
-    queryKey: ['usage', 'users', 'selector'],
-    queryFn: () => apiFetch<UsageUserScopeItem[]>('/usage/users'),
-    enabled: isSuperAdmin,
-    refetchInterval: isSuperAdmin ? 5000 : false,
-    refetchOnWindowFocus: true,
+  const subUsersQuery = useQuery({
+    queryKey: ['users', 'sub-users', 'analytics-scope'],
+    queryFn: () => apiFetch<SubUsersResponse>('/users/sub-users'),
+    enabled: isSubAdmin || isAdmin || isSuperAdmin,
   });
 
+  const superAdminAdminOptions = (subUsersQuery.data?.items ?? []).filter(
+    (item) => item.role === 'ADMIN',
+  );
+
+  const areaSecretaryOptions = isSuperAdmin
+    ? (subUsersQuery.data?.items ?? []).filter(
+        (item) => item.role === 'SUB_ADMIN' && item.parentUserId === selectedAdminId,
+      )
+    : (subUsersQuery.data?.items ?? []).filter(
+        (item) => item.role === 'SUB_ADMIN' && (!currentUser.user?.id || item.parentUserId === currentUser.user.id),
+      );
+
+  const wardMemberOptions = isSuperAdmin || isAdmin
+    ? (subUsersQuery.data?.items ?? []).filter(
+        (item) => item.role === 'SUB_USER' && item.parentUserId === selectedAreaSecretaryId,
+      )
+    : (subUsersQuery.data?.items ?? []).filter(
+        (item) => item.role === 'SUB_USER' && item.parentUserId === currentUser.user?.id,
+      );
+
+  const volunteerOptions = (subUsersQuery.data?.items ?? []).filter(
+    (item) => item.role === 'VOLUNTEER' && item.parentUserId === selectedWardMemberId,
+  );
+
+  const effectiveFocusUserId = isSuperAdmin
+    ? selectedVolunteerId !== 'ALL'
+      ? selectedVolunteerId
+      : selectedWardMemberId !== 'ALL'
+        ? selectedWardMemberId
+        : selectedAreaSecretaryId !== 'ALL'
+          ? selectedAreaSecretaryId
+          : selectedAdminId !== 'ALL'
+            ? selectedAdminId
+            : undefined
+    : isAdmin
+      ? selectedWardMemberId !== 'ALL'
+        ? selectedWardMemberId
+        : selectedAreaSecretaryId !== 'ALL'
+          ? selectedAreaSecretaryId
+          : undefined
+      : isSubAdmin && selectedFocusUserId !== 'ALL'
+        ? selectedFocusUserId
+        : undefined;
+
+  const queryScope = {
+    focusUserId: effectiveFocusUserId,
+  };
+
+  const scopeQuery = buildQuery(queryScope);
+
   const summaryQuery = useQuery({
-    queryKey: ['analytics', 'summary', selectedCandidateId],
-    queryFn: () => apiFetch<AnalyticsSummary>(`/analytics/summary${candidateScopeQuery}`),
+    queryKey: ['analytics', 'summary', selectedAdminId, selectedFocusUserId, selectedAreaSecretaryId, selectedWardMemberId, selectedVolunteerId],
+    queryFn: () => apiFetch<AnalyticsSummary>(`/analytics/summary${scopeQuery}`),
     refetchInterval: isSuperAdmin ? 5000 : false,
     refetchOnWindowFocus: true,
   });
 
   const dailyVotersQuery = useQuery({
-    queryKey: ['analytics', 'daily-voters', dateRange, selectedCandidateId],
+    queryKey: ['analytics', 'daily-voters', dateRange, selectedAdminId, selectedFocusUserId, selectedAreaSecretaryId, selectedWardMemberId, selectedVolunteerId],
     queryFn: () =>
       apiFetch<DailyVoterData[]>(
         `/analytics/daily-voters${buildQuery({
           range: dateRange,
-          candidateId: isSuperAdmin && selectedCandidateId !== 'ALL' ? selectedCandidateId : undefined,
+          ...queryScope,
         })}`,
       ),
     refetchInterval: isSuperAdmin ? 5000 : false,
@@ -112,29 +153,29 @@ export function AnalyticsPage() {
   });
 
   const productivityQuery = useQuery({
-    queryKey: ['analytics', 'subuser-productivity', selectedCandidateId],
+    queryKey: ['analytics', 'subuser-productivity', selectedAdminId, selectedFocusUserId, selectedAreaSecretaryId, selectedWardMemberId, selectedVolunteerId],
     queryFn: () =>
       apiFetch<SubUserProductivity[]>(
-        `/analytics/subuser-productivity${candidateScopeQuery}`,
+        `/analytics/subuser-productivity${scopeQuery}`,
       ),
     refetchInterval: isSuperAdmin ? 5000 : false,
     refetchOnWindowFocus: true,
   });
 
   const progressQuery = useQuery({
-    queryKey: ['analytics', 'voting-progress', selectedCandidateId],
-    queryFn: () => apiFetch<VotingProgress>(`/analytics/voting-progress${candidateScopeQuery}`),
+    queryKey: ['analytics', 'voting-progress', selectedAdminId, selectedFocusUserId, selectedAreaSecretaryId, selectedWardMemberId, selectedVolunteerId],
+    queryFn: () => apiFetch<VotingProgress>(`/analytics/voting-progress${scopeQuery}`),
     refetchInterval: isSuperAdmin ? 5000 : false,
     refetchOnWindowFocus: true,
   });
 
   const topPerformersQuery = useQuery({
-    queryKey: ['analytics', 'top-performers', selectedCandidateId],
+    queryKey: ['analytics', 'top-performers', selectedAdminId, selectedFocusUserId, selectedAreaSecretaryId, selectedWardMemberId, selectedVolunteerId],
     queryFn: () =>
       apiFetch<TopPerformer[]>(
         `/analytics/top-performers${buildQuery({
           limit: 5,
-          candidateId: isSuperAdmin && selectedCandidateId !== 'ALL' ? selectedCandidateId : undefined,
+          ...queryScope,
         })}`,
       ),
     refetchInterval: isSuperAdmin ? 5000 : false,
@@ -170,36 +211,269 @@ export function AnalyticsPage() {
 
       {isSuperAdmin && (
         <div className="rounded-xl border bg-white p-4 shadow-sm">
+          {selectedVolunteerId !== 'ALL' ? (
+            <div className="flex items-center justify-between rounded-xl bg-indigo-50 px-3 py-2 text-sm text-indigo-700">
+              <span>
+                Showing volunteers under: {volunteerOptions.find((item) => item.id === selectedVolunteerId)?.fullName
+                  || volunteerOptions.find((item) => item.id === selectedVolunteerId)?.username
+                  || 'Selected User'}
+              </span>
+              <button
+                className="rounded-lg border border-indigo-200 bg-white px-2 py-1 text-xs font-medium text-indigo-700"
+                type="button"
+                onClick={() => setSelectedVolunteerId('ALL')}
+              >
+                Back to volunteers
+              </button>
+            </div>
+          ) : selectedWardMemberId !== 'ALL' ? (
+            <div>
+              <div className="mb-3 flex items-center justify-between rounded-xl bg-indigo-50 px-3 py-2 text-sm text-indigo-700">
+                <span>
+                  Showing volunteers under ward member: {wardMemberOptions.find((item) => item.id === selectedWardMemberId)?.fullName
+                    || wardMemberOptions.find((item) => item.id === selectedWardMemberId)?.username
+                    || 'Selected User'}
+                </span>
+                <button
+                  className="rounded-lg border border-indigo-200 bg-white px-2 py-1 text-xs font-medium text-indigo-700"
+                  type="button"
+                  onClick={() => {
+                    setSelectedWardMemberId('ALL');
+                    setSelectedVolunteerId('ALL');
+                  }}
+                >
+                  Back to ward members
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {volunteerOptions.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="rounded-lg border px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-50"
+                    onClick={() => setSelectedVolunteerId(item.id)}
+                  >
+                    {item.fullName || item.username}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : selectedAreaSecretaryId !== 'ALL' ? (
+            <div>
+              <div className="mb-3 flex items-center justify-between rounded-xl bg-indigo-50 px-3 py-2 text-sm text-indigo-700">
+                <span>
+                  Showing ward members under area secretary: {areaSecretaryOptions.find((item) => item.id === selectedAreaSecretaryId)?.fullName
+                    || areaSecretaryOptions.find((item) => item.id === selectedAreaSecretaryId)?.username
+                    || 'Selected User'}
+                </span>
+                <button
+                  className="rounded-lg border border-indigo-200 bg-white px-2 py-1 text-xs font-medium text-indigo-700"
+                  type="button"
+                  onClick={() => {
+                    setSelectedAreaSecretaryId('ALL');
+                    setSelectedWardMemberId('ALL');
+                    setSelectedVolunteerId('ALL');
+                  }}
+                >
+                  Back to area secretaries
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {wardMemberOptions.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="rounded-lg border px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-50"
+                    onClick={() => {
+                      setSelectedWardMemberId(item.id);
+                      setSelectedVolunteerId('ALL');
+                    }}
+                  >
+                    {item.fullName || item.username}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : selectedAdminId !== 'ALL' ? (
+            <div>
+              <div className="mb-3 flex items-center justify-between rounded-xl bg-indigo-50 px-3 py-2 text-sm text-indigo-700">
+                <span>
+                  Showing area secretaries under admin: {superAdminAdminOptions.find((item) => item.id === selectedAdminId)?.fullName
+                    || superAdminAdminOptions.find((item) => item.id === selectedAdminId)?.username
+                    || 'Selected User'}
+                </span>
+                <button
+                  className="rounded-lg border border-indigo-200 bg-white px-2 py-1 text-xs font-medium text-indigo-700"
+                  type="button"
+                  onClick={() => {
+                    setSelectedAdminId('ALL');
+                    setSelectedAreaSecretaryId('ALL');
+                    setSelectedWardMemberId('ALL');
+                    setSelectedVolunteerId('ALL');
+                  }}
+                >
+                  Back to admins
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {areaSecretaryOptions.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="rounded-lg border px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-50"
+                    onClick={() => {
+                      setSelectedAreaSecretaryId(item.id);
+                      setSelectedWardMemberId('ALL');
+                      setSelectedVolunteerId('ALL');
+                    }}
+                  >
+                    {item.fullName || item.username}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <h3 className="mb-2 text-base font-semibold">Admin Scope</h3>
+              <div className="flex flex-wrap gap-2">
+                {superAdminAdminOptions.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="rounded-lg border px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-50"
+                    onClick={() => {
+                      setSelectedAdminId(item.id);
+                      setSelectedAreaSecretaryId('ALL');
+                      setSelectedWardMemberId('ALL');
+                      setSelectedVolunteerId('ALL');
+                    }}
+                  >
+                    {item.fullName || item.username}
+                  </button>
+                ))}
+                {subUsersQuery.isLoading && <p className="text-sm text-slate-500">Loading admins...</p>}
+                {!subUsersQuery.isLoading && superAdminAdminOptions.length === 0 && (
+                  <p className="text-sm text-slate-500">No admins found.</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="rounded-xl border bg-white p-4 shadow-sm">
+          {selectedWardMemberId !== 'ALL' ? (
+            <div className="flex items-center justify-between rounded-xl bg-indigo-50 px-3 py-2 text-sm text-indigo-700">
+              <span>
+                Showing volunteers under ward member:{' '}
+                {wardMemberOptions.find((item) => item.id === selectedWardMemberId)?.fullName
+                  || wardMemberOptions.find((item) => item.id === selectedWardMemberId)?.username
+                  || 'Selected User'}
+              </span>
+              <button
+                className="rounded-lg border border-indigo-200 bg-white px-2 py-1 text-xs font-medium text-indigo-700"
+                type="button"
+                onClick={() => setSelectedWardMemberId('ALL')}
+              >
+                Back to ward members
+              </button>
+            </div>
+          ) : selectedAreaSecretaryId !== 'ALL' ? (
+            <div>
+              <div className="mb-3 flex items-center justify-between rounded-xl bg-indigo-50 px-3 py-2 text-sm text-indigo-700">
+                <span>
+                  Showing ward members under area secretary:{' '}
+                  {areaSecretaryOptions.find((item) => item.id === selectedAreaSecretaryId)?.fullName
+                    || areaSecretaryOptions.find((item) => item.id === selectedAreaSecretaryId)?.username
+                    || 'Selected User'}
+                </span>
+                <button
+                  className="rounded-lg border border-indigo-200 bg-white px-2 py-1 text-xs font-medium text-indigo-700"
+                  type="button"
+                  onClick={() => {
+                    setSelectedAreaSecretaryId('ALL');
+                    setSelectedWardMemberId('ALL');
+                  }}
+                >
+                  Back to area secretaries
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {wardMemberOptions.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="rounded-lg border px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-50"
+                    onClick={() => setSelectedWardMemberId(item.id)}
+                  >
+                    {item.fullName || item.username}
+                  </button>
+                ))}
+                {wardMemberOptions.length === 0 && (
+                  <p className="text-sm text-slate-500">No ward members found under this area secretary.</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <h3 className="mb-2 text-base font-semibold">Area Secretary Scope</h3>
+              <div className="flex flex-wrap gap-2">
+                {areaSecretaryOptions.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="rounded-lg border px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-50"
+                    onClick={() => {
+                      setSelectedAreaSecretaryId(item.id);
+                      setSelectedWardMemberId('ALL');
+                    }}
+                  >
+                    {item.fullName || item.username}
+                  </button>
+                ))}
+                {subUsersQuery.isLoading && <p className="text-sm text-slate-500">Loading area secretaries...</p>}
+                {!subUsersQuery.isLoading && areaSecretaryOptions.length === 0 && (
+                  <p className="text-sm text-slate-500">No area secretaries found.</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {isSubAdmin && (
+        <div className="rounded-xl border bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-base font-semibold">Scope</h3>
+            <h3 className="text-base font-semibold">Ward Member Scope</h3>
             <button
               className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
-                selectedCandidateId === 'ALL' ? 'bg-slate-900 text-white' : 'text-slate-700'
+                selectedFocusUserId === 'ALL' ? 'bg-slate-900 text-white' : 'text-slate-700'
               }`}
               type="button"
-              onClick={() => setSelectedCandidateId('ALL')}
+              onClick={() => setSelectedFocusUserId('ALL')}
             >
-              All Users
+              All Ward Members
             </button>
           </div>
 
-          {usageUsersQuery.isLoading ? (
-            <p className="text-sm text-slate-500">Loading users...</p>
-          ) : usageUsersQuery.data && usageUsersQuery.data.length > 0 ? (
+          {subUsersQuery.isLoading ? (
+            <p className="text-sm text-slate-500">Loading ward members...</p>
+          ) : wardMemberOptions.length > 0 ? (
             <select
               className="w-full rounded-lg border px-3 py-2 text-sm"
-              value={selectedCandidateId}
-              onChange={(event) => setSelectedCandidateId(event.target.value)}
+              value={selectedFocusUserId}
+              onChange={(event) => setSelectedFocusUserId(event.target.value)}
             >
-              <option value="ALL">All Users</option>
-              {usageUsersQuery.data.map((item) => (
-                <option key={item.userId} value={item.candidateId}>
-                  {item.fullName || item.username} - {item.candidateName}
+              <option value="ALL">All Ward Members</option>
+              {wardMemberOptions.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.fullName || item.username}
                 </option>
               ))}
             </select>
           ) : (
-            <p className="text-sm text-slate-500">No users available.</p>
+            <p className="text-sm text-slate-500">No ward members found.</p>
           )}
         </div>
       )}
@@ -348,10 +622,10 @@ export function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Sub-user Productivity Table */}
+      {/* Team Productivity Table */}
       <div className="rounded-xl border bg-white shadow-sm">
         <div className="border-b p-6">
-          <h3 className="text-lg font-semibold">Sub-user Productivity</h3>
+          <h3 className="text-lg font-semibold">Team Productivity</h3>
           <p className="text-sm text-slate-600">Performance metrics for all booth agents.</p>
         </div>
         {productivityQuery.isLoading ? (
@@ -360,7 +634,7 @@ export function AnalyticsPage() {
           </div>
         ) : productivity.length === 0 ? (
           <div className="p-6">
-            <p className="text-sm text-slate-500">No sub-users found.</p>
+            <p className="text-sm text-slate-500">No team users found.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">

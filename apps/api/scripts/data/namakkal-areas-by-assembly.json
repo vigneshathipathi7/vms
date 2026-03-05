@@ -1,0 +1,41 @@
+{
+  "district": "Namakkal",
+  "constituencies": [
+    {
+      "name": "Rasipuram",
+      "acCode": "92",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Senthamangalam",
+      "acCode": "93",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Namakkal",
+      "acCode": "94",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Paramathi-Velur",
+      "acCode": "95",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Tiruchengode",
+      "acCode": "96",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Kumarapalayam",
+      "acCode": "97",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

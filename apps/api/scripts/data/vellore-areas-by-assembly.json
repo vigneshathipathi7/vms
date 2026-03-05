@@ -1,0 +1,35 @@
+{
+  "district": "Vellore",
+  "constituencies": [
+    {
+      "name": "Katpadi",
+      "acCode": "39",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Vellore",
+      "acCode": "43",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Anaikattu",
+      "acCode": "44",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "K.V.Kuppam",
+      "acCode": "45",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Gudiyattam",
+      "acCode": "46",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

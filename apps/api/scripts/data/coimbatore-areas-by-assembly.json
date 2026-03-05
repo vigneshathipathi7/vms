@@ -1,0 +1,65 @@
+{
+  "district": "Coimbatore",
+  "constituencies": [
+    {
+      "name": "Mettupalayam",
+      "acCode": "116",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Sulur",
+      "acCode": "117",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Kavundampalayam",
+      "acCode": "118",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Coimbatore North",
+      "acCode": "119",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Thondamuthur",
+      "acCode": "120",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Coimbatore South",
+      "acCode": "121",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Singanallur",
+      "acCode": "122",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Kinathukadavu",
+      "acCode": "123",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Pollachi",
+      "acCode": "124",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Valparai",
+      "acCode": "125",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

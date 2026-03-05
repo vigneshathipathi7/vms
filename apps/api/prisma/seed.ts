@@ -45,13 +45,24 @@ async function seedSharedLocations() {
   console.log('Seeding shared location data...');
   
   for (const talukData of LOCATION_DATA) {
+    const district = await prisma.district.upsert({
+      where: { name: talukData.district },
+      update: {},
+      create: { name: talukData.district },
+    });
+
     // Upsert Taluk (shared globally)
     const taluk = await prisma.taluk.upsert({
-      where: { name: talukData.taluk },
-      update: { district: talukData.district },
+      where: {
+        districtId_name: {
+          districtId: district.id,
+          name: talukData.taluk,
+        },
+      },
+      update: {},
       create: {
         name: talukData.taluk,
-        district: talukData.district,
+        districtId: district.id,
       },
     });
 

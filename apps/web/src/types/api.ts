@@ -1,4 +1,4 @@
-export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'SUB_USER';
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'SUB_ADMIN' | 'SUB_USER' | 'VOLUNTEER';
 
 export type ElectionType = 'LOCAL_BODY' | 'ASSEMBLY' | 'PARLIAMENT';
 
@@ -203,6 +203,8 @@ export interface SubUsersResponse {
   items: {
     id: string;
     username: string;
+    role: UserRole;
+    parentUserId: string | null;
     fullName: string | null;
     phone: string | null;
     email: string | null;
@@ -210,6 +212,7 @@ export interface SubUsersResponse {
     managedWardId: string | null;
     managedVillage: { id: string; name: string } | null;
     managedWard: { id: string; wardNumber: string } | null;
+    assignedWards: { id: string; ward: { id: string; wardNumber: string } }[];
     createdAt: string;
     votersAddedCount: number;
   }[];

@@ -23,7 +23,7 @@ import { AuditService } from '../audit/audit.service';
 
 @Controller('analytics')
 @UseGuards(AuthCookieGuard, RolesGuard)
-@Roles('ADMIN', 'SUPER_ADMIN')
+@Roles('ADMIN', 'SUPER_ADMIN', 'SUB_ADMIN', 'SUB_USER')
 export class AnalyticsController {
   constructor(
     private readonly analyticsService: AnalyticsService,
@@ -40,11 +40,13 @@ export class AnalyticsController {
   async getDailyVoters(
     @CurrentUser() user: AuthenticatedUser,
     @Query('candidateId') candidateId?: string,
+    @Query('focusUserId') focusUserId?: string,
     @Query('range') range?: '7d' | '30d' | '90d' | 'all',
   ) {
-    const scopedCandidateId = user.role === 'SUPER_ADMIN' ? candidateId : user.candidateId;
     return this.analyticsService.getDailyVoterAdditions(
-      scopedCandidateId,
+      user,
+      candidateId,
+      focusUserId,
       range || '30d',
     );
   }
@@ -59,9 +61,9 @@ export class AnalyticsController {
   async getSubUserProductivity(
     @CurrentUser() user: AuthenticatedUser,
     @Query('candidateId') candidateId?: string,
+    @Query('focusUserId') focusUserId?: string,
   ) {
-    const scopedCandidateId = user.role === 'SUPER_ADMIN' ? candidateId : user.candidateId;
-    return this.analyticsService.getSubUserProductivity(scopedCandidateId);
+    return this.analyticsService.getSubUserProductivity(user, candidateId, focusUserId);
   }
 
   /**
@@ -74,9 +76,9 @@ export class AnalyticsController {
   async getVotingProgress(
     @CurrentUser() user: AuthenticatedUser,
     @Query('candidateId') candidateId?: string,
+    @Query('focusUserId') focusUserId?: string,
   ) {
-    const scopedCandidateId = user.role === 'SUPER_ADMIN' ? candidateId : user.candidateId;
-    return this.analyticsService.getVotingProgress(scopedCandidateId);
+    return this.analyticsService.getVotingProgress(user, candidateId, focusUserId);
   }
 
   /**
@@ -89,6 +91,7 @@ export class AnalyticsController {
   async getAnalyticsSummary(
     @CurrentUser() user: AuthenticatedUser,
     @Query('candidateId') candidateId?: string,
+    @Query('focusUserId') focusUserId?: string,
   ) {
     const scopedCandidateId = user.role === 'SUPER_ADMIN' ? candidateId : user.candidateId;
     // Log analytics access
@@ -97,10 +100,14 @@ export class AnalyticsController {
       action: 'AUDIT_EXPORTED', // Reusing existing action for analytics access
       entityType: 'Analytics',
       candidateId: scopedCandidateId,
-      metadata: { type: 'summary', candidateId: scopedCandidateId ?? 'ALL' },
+      metadata: {
+        type: 'summary',
+        candidateId: scopedCandidateId ?? 'ALL',
+        focusUserId: focusUserId ?? 'ALL',
+      },
     });
 
-    return this.analyticsService.getAnalyticsSummary(scopedCandidateId);
+    return this.analyticsService.getAnalyticsSummary(user, candidateId, focusUserId);
   }
 
   /**
@@ -113,10 +120,10 @@ export class AnalyticsController {
   async getTopPerformers(
     @CurrentUser() user: AuthenticatedUser,
     @Query('candidateId') candidateId?: string,
+    @Query('focusUserId') focusUserId?: string,
     @Query('limit') limit?: string,
   ) {
     const parsedLimit = limit ? Math.min(parseInt(limit, 10), 20) : 5;
-    const scopedCandidateId = user.role === 'SUPER_ADMIN' ? candidateId : user.candidateId;
-    return this.analyticsService.getTopPerformers(scopedCandidateId, parsedLimit);
+    return this.analyticsService.getTopPerformers(user, candidateId, focusUserId, parsedLimit);
   }
 }

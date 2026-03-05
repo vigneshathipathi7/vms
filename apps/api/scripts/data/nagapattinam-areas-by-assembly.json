@@ -1,0 +1,23 @@
+{
+  "district": "Nagapattinam",
+  "constituencies": [
+    {
+      "name": "Nagapattinam",
+      "acCode": "162",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Kilvelur",
+      "acCode": "163",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Vedaranyam",
+      "acCode": "164",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

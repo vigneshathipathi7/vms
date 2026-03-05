@@ -9,7 +9,9 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuthenticatedUser } from '../auth/types/auth.types';
 
 export interface DailyVoterData {
   date: string;
@@ -59,39 +61,117 @@ export class AnalyticsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  private async getDescendantUserIds(rootUserId: string, candidateId: string | null): Promise<string[]> {
+    const visibleUserIds: string[] = [rootUserId];
+    let frontier: string[] = [rootUserId];
+
+    while (frontier.length > 0) {
+      const children = await this.prisma.user.findMany({
+        where: {
+          ...(candidateId ? { candidateId } : {}),
+          parentUserId: { in: frontier },
+        },
+        select: { id: true },
+      });
+
+      const childIds = children.map((entry) => entry.id);
+      if (childIds.length === 0) {
+        break;
+      }
+
+      visibleUserIds.push(...childIds);
+      frontier = childIds;
+    }
+
+    return visibleUserIds;
+  }
+
+  private async resolveScope(
+    actor: AuthenticatedUser,
+    targetCandidateId?: string,
+    focusUserId?: string,
+  ) {
+    if (actor.role === 'SUPER_ADMIN') {
+      const scopedCandidateId = targetCandidateId || undefined;
+      const visibleUserIds = focusUserId
+        ? await this.getDescendantUserIds(focusUserId, scopedCandidateId ?? null)
+        : null;
+
+      return {
+        scopedCandidateId,
+        visibleUserIds,
+      };
+    }
+
+    if (actor.role === 'ADMIN') {
+      const baseCandidateId = actor.candidateId;
+      const focusedVisibleIds = focusUserId
+        ? await this.getDescendantUserIds(focusUserId, baseCandidateId)
+        : null;
+
+      return {
+        scopedCandidateId: baseCandidateId,
+        visibleUserIds: focusedVisibleIds,
+      };
+    }
+
+    const actorVisibleUserIds = await this.getDescendantUserIds(actor.id, actor.candidateId);
+    let visibleUserIds: string[] = actorVisibleUserIds;
+
+    if (focusUserId) {
+      if (!actorVisibleUserIds.includes(focusUserId)) {
+        visibleUserIds = [];
+      } else {
+        visibleUserIds = await this.getDescendantUserIds(focusUserId, actor.candidateId);
+      }
+    }
+
+    return {
+      scopedCandidateId: actor.candidateId,
+      visibleUserIds,
+    };
+  }
+
   /**
    * Get daily voter additions for a date range
    */
   async getDailyVoterAdditions(
-    candidateId: string | undefined,
+    actor: AuthenticatedUser,
+    targetCandidateId: string | undefined,
+    focusUserId: string | undefined,
     range: DateRange = '30d',
   ): Promise<DailyVoterData[]> {
+    const { scopedCandidateId: candidateId, visibleUserIds } = await this.resolveScope(
+      actor,
+      targetCandidateId,
+      focusUserId,
+    );
     const startDate = this.getStartDate(range);
 
-    const results = candidateId
-      ? await this.prisma.$queryRaw<{ date: Date; count: bigint }[]>`
-          SELECT
-            DATE("createdAt") as date,
-            COUNT(*) as count
-          FROM "Voter"
-          WHERE
-            "candidateId" = ${candidateId}
-            AND "isDeleted" = false
-            AND "createdAt" >= ${startDate}
-          GROUP BY DATE("createdAt")
-          ORDER BY date ASC
-        `
-      : await this.prisma.$queryRaw<{ date: Date; count: bigint }[]>`
-          SELECT
-            DATE("createdAt") as date,
-            COUNT(*) as count
-          FROM "Voter"
-          WHERE
-            "isDeleted" = false
-            AND "createdAt" >= ${startDate}
-          GROUP BY DATE("createdAt")
-          ORDER BY date ASC
-        `;
+    if (visibleUserIds && visibleUserIds.length === 0) {
+      return this.fillDateGaps([], startDate, new Date());
+    }
+
+    const candidateClause = candidateId
+      ? Prisma.sql`AND "candidateId" = ${candidateId}`
+      : Prisma.empty;
+    const visibleUsersClause = visibleUserIds
+      ? Prisma.sql`AND "addedByUserId" IN (${Prisma.join(visibleUserIds)})`
+      : Prisma.empty;
+
+    const results = await this.prisma.$queryRaw<{ date: Date; count: bigint }[]>(Prisma.sql`
+      SELECT
+        DATE("createdAt") as date,
+        COUNT(*) as count
+      FROM "Voter"
+      WHERE
+        "isDeleted" = false
+        AND "createdAt" >= ${startDate}
+        ${candidateClause}
+        ${visibleUsersClause}
+      GROUP BY DATE("createdAt")
+      ORDER BY date ASC
+    `);
 
     // Convert to response format and fill in missing dates
     return this.fillDateGaps(
@@ -108,25 +188,34 @@ export class AnalyticsService {
    * Get sub-user productivity metrics
    */
   async getSubUserProductivity(
-    candidateId?: string,
+    actor: AuthenticatedUser,
+    targetCandidateId?: string,
+    focusUserId?: string,
   ): Promise<SubUserProductivity[]> {
+    const { scopedCandidateId: candidateId, visibleUserIds } = await this.resolveScope(
+      actor,
+      targetCandidateId,
+      focusUserId,
+    );
+
     // Get all sub-users for this candidate
-    const subUsers = await this.prisma.user.findMany({
-      where: {
-        role: 'SUB_USER',
-        ...(candidateId ? { candidateId } : {}),
-      },
-      select: {
-        id: true,
-        fullName: true,
-        username: true,
-        _count: {
-          select: {
-            assignedWards: true,
-          },
-        },
-      },
-    });
+    const candidateClause = candidateId
+      ? Prisma.sql`AND u."candidateId" = ${candidateId}`
+      : Prisma.empty;
+    const visibleUsersClause = visibleUserIds
+      ? Prisma.sql`AND u.id IN (${Prisma.join(visibleUserIds)})`
+      : Prisma.empty;
+
+    const subUsers = await this.prisma.$queryRaw<
+      { id: string; fullName: string | null; username: string }[]
+    >(Prisma.sql`
+      SELECT u.id, u."fullName", u.username
+      FROM "User" u
+      WHERE u.role::text IN ('SUB_ADMIN', 'SUB_USER', 'VOLUNTEER')
+        ${candidateClause}
+        ${visibleUsersClause}
+      ORDER BY u.username ASC
+    `);
 
     // Get voter counts grouped by addedByUserId
     const voterCounts = await this.prisma.voter.groupBy({
@@ -134,6 +223,7 @@ export class AnalyticsService {
       where: {
         isDeleted: false,
         ...(candidateId ? { candidateId } : {}),
+        ...(visibleUserIds ? { addedByUserId: { in: visibleUserIds } } : {}),
       },
       _count: {
         id: true,
@@ -147,6 +237,7 @@ export class AnalyticsService {
         isDeleted: false,
         voted: true,
         ...(candidateId ? { candidateId } : {}),
+        ...(visibleUserIds ? { addedByUserId: { in: visibleUserIds } } : {}),
       },
       _count: {
         id: true,
@@ -182,7 +273,17 @@ export class AnalyticsService {
   /**
    * Get voting progress with zone breakdown
    */
-  async getVotingProgress(candidateId?: string): Promise<VotingProgress> {
+  async getVotingProgress(
+    actor: AuthenticatedUser,
+    targetCandidateId?: string,
+    focusUserId?: string,
+  ): Promise<VotingProgress> {
+    const { scopedCandidateId: candidateId, visibleUserIds } = await this.resolveScope(
+      actor,
+      targetCandidateId,
+      focusUserId,
+    );
+
     // Get zones for this candidate
     const zones = await this.prisma.zone.findMany({
       where: candidateId ? { candidateId } : undefined,
@@ -200,6 +301,7 @@ export class AnalyticsService {
       where: {
         isDeleted: false,
         ...(candidateId ? { candidateId } : {}),
+        ...(visibleUserIds ? { addedByUserId: { in: visibleUserIds } } : {}),
       },
       _count: {
         id: true,
@@ -213,6 +315,7 @@ export class AnalyticsService {
         isDeleted: false,
         voted: true,
         ...(candidateId ? { candidateId } : {}),
+        ...(visibleUserIds ? { addedByUserId: { in: visibleUserIds } } : {}),
       },
       _count: {
         id: true,
@@ -256,7 +359,16 @@ export class AnalyticsService {
   /**
    * Get analytics summary for dashboard
    */
-  async getAnalyticsSummary(candidateId?: string): Promise<AnalyticsSummary> {
+  async getAnalyticsSummary(
+    actor: AuthenticatedUser,
+    targetCandidateId?: string,
+    focusUserId?: string,
+  ): Promise<AnalyticsSummary> {
+    const { scopedCandidateId: candidateId, visibleUserIds } = await this.resolveScope(
+      actor,
+      targetCandidateId,
+      focusUserId,
+    );
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const oneWeekAgo = new Date(now);
@@ -265,7 +377,7 @@ export class AnalyticsService {
     const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
     // Get daily additions for last 30 days
-    const dailyAdditions = await this.getDailyVoterAdditions(candidateId, '30d');
+    const dailyAdditions = await this.getDailyVoterAdditions(actor, candidateId, focusUserId, '30d');
 
     // Count voters added today
     const todayAdditions = await this.prisma.voter.count({
@@ -273,6 +385,7 @@ export class AnalyticsService {
         isDeleted: false,
         createdAt: { gte: startOfToday },
         ...(candidateId ? { candidateId } : {}),
+        ...(visibleUserIds ? { addedByUserId: { in: visibleUserIds } } : {}),
       },
     });
 
@@ -282,6 +395,7 @@ export class AnalyticsService {
         isDeleted: false,
         createdAt: { gte: oneWeekAgo },
         ...(candidateId ? { candidateId } : {}),
+        ...(visibleUserIds ? { addedByUserId: { in: visibleUserIds } } : {}),
       },
     });
 
@@ -291,6 +405,7 @@ export class AnalyticsService {
         isDeleted: false,
         createdAt: { gte: firstDayThisMonth },
         ...(candidateId ? { candidateId } : {}),
+        ...(visibleUserIds ? { addedByUserId: { in: visibleUserIds } } : {}),
       },
     });
 
@@ -303,6 +418,7 @@ export class AnalyticsService {
           lt: firstDayThisMonth,
         },
         ...(candidateId ? { candidateId } : {}),
+        ...(visibleUserIds ? { addedByUserId: { in: visibleUserIds } } : {}),
       },
     });
 
@@ -317,10 +433,19 @@ export class AnalyticsService {
     // Get totals
     const [totalVoters, totalVoted] = await this.prisma.$transaction([
       this.prisma.voter.count({
-        where: { isDeleted: false, ...(candidateId ? { candidateId } : {}) },
+        where: {
+          isDeleted: false,
+          ...(candidateId ? { candidateId } : {}),
+          ...(visibleUserIds ? { addedByUserId: { in: visibleUserIds } } : {}),
+        },
       }),
       this.prisma.voter.count({
-        where: { isDeleted: false, voted: true, ...(candidateId ? { candidateId } : {}) },
+        where: {
+          isDeleted: false,
+          voted: true,
+          ...(candidateId ? { candidateId } : {}),
+          ...(visibleUserIds ? { addedByUserId: { in: visibleUserIds } } : {}),
+        },
       }),
     ]);
 
@@ -338,7 +463,17 @@ export class AnalyticsService {
   /**
    * Get top performers (sub-users with most voters added this week)
    */
-  async getTopPerformers(candidateId: string | undefined, limit = 5) {
+  async getTopPerformers(
+    actor: AuthenticatedUser,
+    targetCandidateId: string | undefined,
+    focusUserId: string | undefined,
+    limit = 5,
+  ) {
+    const { scopedCandidateId: candidateId, visibleUserIds } = await this.resolveScope(
+      actor,
+      targetCandidateId,
+      focusUserId,
+    );
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
@@ -348,6 +483,7 @@ export class AnalyticsService {
         isDeleted: false,
         createdAt: { gte: oneWeekAgo },
         ...(candidateId ? { candidateId } : {}),
+        ...(visibleUserIds ? { addedByUserId: { in: visibleUserIds } } : {}),
       },
       _count: {
         id: true,
@@ -368,6 +504,7 @@ export class AnalyticsService {
         voted: true,
         createdAt: { gte: oneWeekAgo },
         ...(candidateId ? { candidateId } : {}),
+        ...(visibleUserIds ? { addedByUserId: { in: visibleUserIds } } : {}),
       },
       _count: {
         id: true,

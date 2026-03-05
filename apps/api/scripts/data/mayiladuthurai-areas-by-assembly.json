@@ -1,0 +1,23 @@
+{
+  "district": "Mayiladuthurai",
+  "constituencies": [
+    {
+      "name": "Sirkazhi",
+      "acCode": "159",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Mayiladuthurai",
+      "acCode": "160",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Poompuhar",
+      "acCode": "161",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

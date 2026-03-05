@@ -11,6 +11,64 @@ export class AuditService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  private async getDescendantUserIds(rootUserId: string, candidateId: string | null): Promise<string[]> {
+    const visibleUserIds: string[] = [rootUserId];
+    let frontier: string[] = [rootUserId];
+
+    while (frontier.length > 0) {
+      const children = await this.prisma.user.findMany({
+        where: {
+          ...(candidateId ? { candidateId } : {}),
+          parentUserId: { in: frontier },
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      const childIds = children.map((entry) => entry.id);
+      if (childIds.length === 0) {
+        break;
+      }
+
+      visibleUserIds.push(...childIds);
+      frontier = childIds;
+    }
+
+    return visibleUserIds;
+  }
+
+  private async getVisibleUserIds(actor: AuthenticatedUser): Promise<string[] | null> {
+    if (actor.role === 'SUPER_ADMIN' || actor.role === 'ADMIN') {
+      return null;
+    }
+
+    const visibleUserIds: string[] = [actor.id];
+    let frontier: string[] = [actor.id];
+
+    while (frontier.length > 0) {
+      const children = await this.prisma.user.findMany({
+        where: {
+          candidateId: actor.candidateId,
+          parentUserId: { in: frontier },
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      const childIds = children.map((entry) => entry.id);
+      if (childIds.length === 0) {
+        break;
+      }
+
+      visibleUserIds.push(...childIds);
+      frontier = childIds;
+    }
+
+    return visibleUserIds;
+  }
+
   private resolveCandidateScope(actor: AuthenticatedUser, targetCandidateId?: string) {
     if (actor.role === 'SUPER_ADMIN') {
       return targetCandidateId || undefined;
@@ -44,41 +102,88 @@ export class AuditService {
 
   async listLogs(actor: AuthenticatedUser, limit: number, targetCandidateId?: string) {
     const scopedCandidateId = this.resolveCandidateScope(actor, targetCandidateId);
+    const visibleUserIds = await this.getVisibleUserIds(actor);
+
+    const where: Prisma.AuditLogWhereInput = {
+      ...(scopedCandidateId ? { candidateId: scopedCandidateId } : {}),
+    };
+
+    if (visibleUserIds) {
+      where.actorUserId = { in: visibleUserIds };
+    }
+
     return this.prisma.auditLog.findMany({
-      where: scopedCandidateId ? { candidateId: scopedCandidateId } : undefined,
+      where,
       orderBy: { createdAt: 'desc' },
       take: limit,
     });
   }
 
-  async voterAdditionsSummary(actor: AuthenticatedUser, targetCandidateId?: string) {
+  async voterAdditionsSummary(
+    actor: AuthenticatedUser,
+    targetCandidateId?: string,
+    focusUserId?: string,
+  ) {
     const scopedCandidateId = this.resolveCandidateScope(actor, targetCandidateId);
-    const userScopeClause = scopedCandidateId
-      ? Prisma.sql`AND u."candidateId" = ${scopedCandidateId}`
-      : Prisma.empty;
+    const actorVisibleUserIds = await this.getVisibleUserIds(actor);
 
-    const items = await this.prisma.$queryRaw<
-      {
-        userId: string;
-        username: string;
-        role: string;
-        votersAddedCount: number;
-        lastAddedAt: Date | null;
-      }[]
-    >(Prisma.sql`
-      SELECT
-        u.id AS "userId",
-        u.username,
-        u.role::text AS role,
-        COUNT(v.id)::int AS "votersAddedCount",
-        MAX(v."createdAt") AS "lastAddedAt"
-      FROM "User" u
-      LEFT JOIN "Voter" v ON v."addedByUserId" = u.id AND v."isDeleted" = false
-      WHERE u.role IN ('ADMIN'::"UserRole", 'SUB_USER'::"UserRole")
-        ${userScopeClause}
-      GROUP BY u.id
-      ORDER BY u.role ASC, u.username ASC
-    `);
+    let visibleUserIds = actorVisibleUserIds;
+    if (focusUserId) {
+      if (actor.role === 'SUPER_ADMIN') {
+        visibleUserIds = await this.getDescendantUserIds(focusUserId, scopedCandidateId ?? null);
+      } else if (actorVisibleUserIds && !actorVisibleUserIds.includes(focusUserId)) {
+        visibleUserIds = [];
+      } else {
+        visibleUserIds = await this.getDescendantUserIds(
+          focusUserId,
+          scopedCandidateId ?? actor.candidateId,
+        );
+      }
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: {
+        ...(scopedCandidateId ? { candidateId: scopedCandidateId } : {}),
+        role: { in: ['ADMIN', 'SUB_ADMIN', 'SUB_USER', 'VOLUNTEER'] },
+        ...(visibleUserIds ? { id: { in: visibleUserIds } } : {}),
+      },
+      select: {
+        id: true,
+        username: true,
+        role: true,
+      },
+      orderBy: [{ role: 'asc' }, { username: 'asc' }],
+    });
+
+    const targetUserIds = users.map((user) => user.id);
+
+    const voterCounts = targetUserIds.length
+      ? await this.prisma.voter.groupBy({
+          by: ['addedByUserId'],
+          where: {
+            isDeleted: false,
+            ...(scopedCandidateId ? { candidateId: scopedCandidateId } : {}),
+            addedByUserId: { in: targetUserIds },
+          },
+          _count: {
+            id: true,
+          },
+          _max: {
+            createdAt: true,
+          },
+        })
+      : [];
+
+    const countMap = new Map(voterCounts.map((entry) => [entry.addedByUserId, entry._count.id]));
+    const lastAddedMap = new Map(voterCounts.map((entry) => [entry.addedByUserId, entry._max.createdAt]));
+
+    const items = users.map((user) => ({
+      userId: user.id,
+      username: user.username,
+      role: user.role,
+      votersAddedCount: countMap.get(user.id) ?? 0,
+      lastAddedAt: lastAddedMap.get(user.id) ?? null,
+    }));
 
     const totals = {
       users: items.length,
@@ -107,6 +212,7 @@ export class AuditService {
     targetCandidateId?: string,
   ) {
     const scopedCandidateId = this.resolveCandidateScope(actor, targetCandidateId);
+    const visibleUserIds = await this.getVisibleUserIds(actor);
     const csvStream = new Transform({
       transform(chunk, encoding, callback) {
         callback(null, chunk);
@@ -130,7 +236,11 @@ export class AuditService {
       const logs = await this.prisma.auditLog.findMany({
         where: {
           ...(scopedCandidateId ? { candidateId: scopedCandidateId } : {}),
-          ...(userId && { actorUserId: userId }),
+          ...(userId
+            ? { actorUserId: userId }
+            : visibleUserIds
+              ? { actorUserId: { in: visibleUserIds } }
+              : {}),
         },
         include: {
           actor: {

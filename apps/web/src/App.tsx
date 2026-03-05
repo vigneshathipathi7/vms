@@ -15,12 +15,12 @@ import { LoginPage } from './pages/LoginPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { SignupPage } from './pages/SignupPage';
 import { SetupPasswordPage } from './pages/SetupPasswordPage';
+import { SuperAdminVotersPage } from './pages/SuperAdminVotersPage';
 import { SubUsersPage } from './pages/SubUsersPage';
 import { VotedPage } from './pages/VotedPage';
 import { ZoneDetailsPage } from './pages/ZoneDetailsPage';
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { TermsOfServicePage } from './pages/TermsOfServicePage';
-import { UsagePage } from './pages/UsagePage';
 
 type NavItem = {
   to: string;
@@ -29,13 +29,15 @@ type NavItem = {
   badge?: number;
 };
 
+type AppUser = { role: 'SUPER_ADMIN' | 'ADMIN' | 'SUB_ADMIN' | 'SUB_USER' | 'VOLUNTEER' } | null;
+
 function ProtectedRoute({
   isLoading,
   user,
   children,
 }: {
   isLoading: boolean;
-  user: { role: 'SUPER_ADMIN' | 'ADMIN' | 'SUB_USER' } | null;
+  user: AppUser;
   children: JSX.Element;
 }) {
   if (isLoading) {
@@ -55,7 +57,7 @@ function AdminRoute({
   children,
 }: {
   isLoading: boolean;
-  user: { role: 'SUPER_ADMIN' | 'ADMIN' | 'SUB_USER' } | null;
+  user: AppUser;
   children: JSX.Element;
 }) {
   if (isLoading) {
@@ -66,20 +68,20 @@ function AdminRoute({
     return <Navigate to="/login" replace />;
   }
 
-  if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+  if (!['SUPER_ADMIN', 'ADMIN', 'SUB_ADMIN', 'SUB_USER'].includes(user.role)) {
     return <p className="text-sm text-red-600">Admin access required.</p>;
   }
 
   return children;
 }
 
-function SubUserRoute({
+function ManagerRoute({
   isLoading,
   user,
   children,
 }: {
   isLoading: boolean;
-  user: { role: 'SUPER_ADMIN' | 'ADMIN' | 'SUB_USER' } | null;
+  user: AppUser;
   children: JSX.Element;
 }) {
   if (isLoading) {
@@ -90,8 +92,8 @@ function SubUserRoute({
     return <Navigate to="/login" replace />;
   }
 
-  if (user.role !== 'SUB_USER') {
-    return <p className="text-sm text-red-600">Sub-user access required.</p>;
+  if (!['SUPER_ADMIN', 'ADMIN', 'SUB_ADMIN', 'SUB_USER'].includes(user.role)) {
+    return <p className="text-sm text-red-600">Manager access required.</p>;
   }
 
   return children;
@@ -103,7 +105,7 @@ function SuperAdminRoute({
   children,
 }: {
   isLoading: boolean;
-  user: { role: 'SUPER_ADMIN' | 'ADMIN' | 'SUB_USER' } | null;
+  user: AppUser;
   children: JSX.Element;
 }) {
   if (isLoading) {
@@ -119,6 +121,43 @@ function SuperAdminRoute({
   }
 
   return children;
+}
+
+function ProfileRoute({
+  isLoading,
+  user,
+  children,
+}: {
+  isLoading: boolean;
+  user: AppUser;
+  children: JSX.Element;
+}) {
+  if (isLoading) {
+    return <p className="text-sm text-slate-600">Loading...</p>;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!['SUPER_ADMIN', 'ADMIN'].includes(user.role)) {
+    return <p className="text-sm text-red-600">Profile access not required for this role.</p>;
+  }
+
+  return children;
+}
+
+function hierarchyNavLabel(role: NonNullable<AppUser>['role'] | undefined): string {
+  switch (role) {
+    case 'ADMIN':
+      return 'Area Team';
+    case 'SUB_ADMIN':
+      return 'Ward Team';
+    case 'SUB_USER':
+      return 'Volunteer Team';
+    default:
+      return 'Hierarchy';
+  }
 }
 
 export default function App() {
@@ -145,8 +184,10 @@ export default function App() {
     }
   }, [auth.user]);
 
-  const isPrivilegedUser = currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN';
+  const isPrivilegedUser = ['SUPER_ADMIN', 'ADMIN', 'SUB_ADMIN', 'SUB_USER'].includes(currentUser?.role ?? '');
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
+  const hierarchyLabel = hierarchyNavLabel(currentUser?.role);
+  const canAccessProfile = ['SUPER_ADMIN', 'ADMIN'].includes(currentUser?.role ?? '');
 
   const accessRequestStatsQuery = useQuery({
     queryKey: ['access-requests', 'stats', 'sidebar'],
@@ -170,21 +211,13 @@ export default function App() {
     }
   }
 
+  const canAccessAnalytics = ['SUPER_ADMIN', 'ADMIN', 'SUB_ADMIN', 'SUB_USER'].includes(currentUser?.role ?? '');
+
   const baseNavItems: NavItem[] = [
     {
       to: '/dashboard',
       label: 'Dashboard',
       icon: <span className="text-base">◧</span>,
-    },
-    {
-      to: '/analytics',
-      label: 'Analytics',
-      icon: <span className="text-base">◔</span>,
-    },
-    {
-      to: '/usage',
-      label: 'Usage',
-      icon: <span className="text-base">◎</span>,
     },
     {
       to: '/entry',
@@ -198,15 +231,18 @@ export default function App() {
     },
   ];
 
+  if (canAccessAnalytics) {
+    baseNavItems.splice(1, 0, {
+      to: '/analytics',
+      label: 'Analytics',
+      icon: <span className="text-base">◔</span>,
+    });
+  }
+
   const privilegedNavItems: NavItem[] = [
     {
-      to: '/profile',
-      label: 'Profile',
-      icon: <span className="text-base">◉</span>,
-    },
-    {
       to: '/sub-users',
-      label: 'Sub-users',
+      label: hierarchyLabel,
       icon: <span className="text-base">◌</span>,
     },
     {
@@ -216,7 +252,20 @@ export default function App() {
     },
   ];
 
+  if (canAccessProfile) {
+    privilegedNavItems.unshift({
+      to: '/profile',
+      label: 'Profile',
+      icon: <span className="text-base">◉</span>,
+    });
+  }
+
   const superAdminNavItems: NavItem[] = [
+    {
+      to: '/superadmin/voters',
+      label: 'All Voters',
+      icon: <span className="text-base">☰</span>,
+    },
     {
       to: '/access-requests',
       label: 'Access Requests',
@@ -448,27 +497,19 @@ export default function App() {
             }
           />
           <Route
-            path="/usage"
-            element={
-              <AdminRoute isLoading={auth.isLoading} user={auth.user}>
-                <UsagePage />
-              </AdminRoute>
-            }
-          />
-          <Route
             path="/profile"
             element={
-              <ProtectedRoute isLoading={auth.isLoading} user={auth.user}>
+              <ProfileRoute isLoading={auth.isLoading} user={auth.user}>
                 <ProfilePage />
-              </ProtectedRoute>
+              </ProfileRoute>
             }
           />
           <Route
             path="/profile/edit"
             element={
-              <ProtectedRoute isLoading={auth.isLoading} user={auth.user}>
+              <ProfileRoute isLoading={auth.isLoading} user={auth.user}>
                 <EditProfilePage />
-              </ProtectedRoute>
+              </ProfileRoute>
             }
           />
           <Route
@@ -498,9 +539,9 @@ export default function App() {
           <Route
             path="/sub-users"
             element={
-              <AdminRoute isLoading={auth.isLoading} user={auth.user}>
+              <ManagerRoute isLoading={auth.isLoading} user={auth.user}>
                 <SubUsersPage />
-              </AdminRoute>
+              </ManagerRoute>
             }
           />
           <Route
@@ -517,6 +558,14 @@ export default function App() {
               <AdminRoute isLoading={auth.isLoading} user={auth.user}>
                 <AnalyticsPage />
               </AdminRoute>
+            }
+          />
+          <Route
+            path="/superadmin/voters"
+            element={
+              <SuperAdminRoute isLoading={auth.isLoading} user={auth.user}>
+                <SuperAdminVotersPage />
+              </SuperAdminRoute>
             }
           />
           <Route

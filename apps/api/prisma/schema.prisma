@@ -14,7 +14,9 @@ datasource db {
 enum UserRole {
   SUPER_ADMIN
   ADMIN
+  SUB_ADMIN
   SUB_USER
+  VOLUNTEER
 }
 
 enum ElectionType {
@@ -135,6 +137,11 @@ model User {
   candidateId String?
   candidate   Candidate? @relation(fields: [candidateId], references: [id], onDelete: Cascade)
 
+  // Parent-child hierarchy inside a candidate tree
+  parentUserId String?
+  parentUser   User?  @relation("UserHierarchy", fields: [parentUserId], references: [id], onDelete: SetNull)
+  childUsers   User[] @relation("UserHierarchy")
+
   // For ADMIN: JSON array of taluk IDs they can access
   assignedTaluks Json? @default("[]")
 
@@ -161,6 +168,7 @@ model User {
 
   @@unique([candidateId, username])
   @@index([candidateId])
+  @@index([parentUserId])
   @@index([role])
   @@index([isActive])
 }

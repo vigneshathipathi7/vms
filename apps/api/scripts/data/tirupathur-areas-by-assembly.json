@@ -1,0 +1,29 @@
+{
+  "district": "Tirupathur",
+  "constituencies": [
+    {
+      "name": "Vaniyambadi",
+      "acCode": "47",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Ambur",
+      "acCode": "48",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Jolarpet",
+      "acCode": "49",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Tirupattur",
+      "acCode": "50",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

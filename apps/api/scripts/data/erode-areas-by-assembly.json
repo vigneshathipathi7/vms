@@ -1,0 +1,53 @@
+{
+  "district": "Erode",
+  "constituencies": [
+    {
+      "name": "Erode East",
+      "acCode": "98",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Erode West",
+      "acCode": "99",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Modakkurichi",
+      "acCode": "100",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Perundurai",
+      "acCode": "103",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Bhavani",
+      "acCode": "104",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Anthiyur",
+      "acCode": "105",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Gobichettipalayam",
+      "acCode": "106",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Bhavanisagar",
+      "acCode": "107",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

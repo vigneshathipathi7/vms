@@ -1,0 +1,17 @@
+{
+  "district": "Perambalur",
+  "constituencies": [
+    {
+      "name": "Perambalur",
+      "acCode": "146",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Kunnam",
+      "acCode": "147",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

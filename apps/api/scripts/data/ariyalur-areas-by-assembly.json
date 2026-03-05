@@ -1,0 +1,23 @@
+{
+  "district": "Ariyalur",
+  "constituencies": [
+    {
+      "name": "Ariyalur",
+      "acCode": "148",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Jayankondam",
+      "acCode": "149",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Sendurai",
+      "acCode": "150",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

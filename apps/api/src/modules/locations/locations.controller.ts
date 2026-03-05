@@ -114,6 +114,26 @@ export class LocationsController {
   }
 
   /**
+   * Get allowed area names for a specific district + assembly from dataset files.
+   */
+  @Get('areas/by-assembly')
+  getAreasByAssembly(
+    @Query('districtName') districtName: string | undefined,
+    @Query('assemblyName') assemblyName: string | undefined,
+    @CurrentUser() user: AuthenticatedUser | undefined,
+  ) {
+    if (!user) {
+      throw new UnauthorizedException('Unauthenticated');
+    }
+
+    if (!districtName || !assemblyName) {
+      return { matched: false, areaNames: [] as string[] };
+    }
+
+    return this.locationsService.getAreaNamesByAssembly(districtName, assemblyName);
+  }
+
+  /**
    * Get all zones for the current candidate (TENANT-SCOPED).
    */
   @Get('zones')

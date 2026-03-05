@@ -1,0 +1,35 @@
+{
+  "district": "Ranipet",
+  "constituencies": [
+    {
+      "name": "Arakkonam",
+      "acCode": "37",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Sholingur",
+      "acCode": "38",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Ranipet",
+      "acCode": "40",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Arcot",
+      "acCode": "41",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Kaveripakkam",
+      "acCode": "42",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

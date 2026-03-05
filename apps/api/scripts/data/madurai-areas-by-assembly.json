@@ -1,0 +1,65 @@
+{
+  "district": "Madurai",
+  "constituencies": [
+    {
+      "name": "Melur",
+      "acCode": "187",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Madurai East",
+      "acCode": "188",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Sholavandan",
+      "acCode": "189",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Madurai North",
+      "acCode": "190",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Madurai South",
+      "acCode": "191",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Madurai Central",
+      "acCode": "192",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Madurai West",
+      "acCode": "193",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Thiruparankundram",
+      "acCode": "194",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Thirumangalam",
+      "acCode": "195",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Usilampatti",
+      "acCode": "196",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

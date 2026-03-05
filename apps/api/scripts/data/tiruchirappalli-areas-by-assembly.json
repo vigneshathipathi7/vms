@@ -1,0 +1,59 @@
+{
+  "district": "Tiruchirappalli",
+  "constituencies": [
+    {
+      "name": "Manapparai",
+      "acCode": "137",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Srirangam",
+      "acCode": "138",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Tiruchirappalli West",
+      "acCode": "139",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Tiruchirappalli East",
+      "acCode": "140",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Thiruverumbur",
+      "acCode": "141",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Lalgudi",
+      "acCode": "142",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Manachanallur",
+      "acCode": "143",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Musiri",
+      "acCode": "144",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Thuraiyur",
+      "acCode": "145",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { IsArray, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+import { Equals, IsArray, IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { ElectionType } from '@prisma/client';
 
 export class CreateAccessRequestDto {
@@ -17,10 +17,12 @@ export class CreateAccessRequestDto {
   email!: string;
 
   @IsEnum(ElectionType)
+  @Equals(ElectionType.ASSEMBLY, { message: 'Only ASSEMBLY (MLA) election type is supported' })
   @IsNotEmpty()
   electionType!: ElectionType;
 
   @IsString()
+  @Equals('MLA', { message: 'Only MLA contesting position is supported' })
   @IsNotEmpty()
   @MaxLength(50)
   contestingFor!: string;

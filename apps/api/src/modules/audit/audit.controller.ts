@@ -10,7 +10,7 @@ import { AuditService } from './audit.service';
 
 @Controller('audit')
 @UseGuards(AuthCookieGuard, RolesGuard)
-@Roles('ADMIN', 'SUPER_ADMIN')
+@Roles('ADMIN', 'SUPER_ADMIN', 'SUB_ADMIN', 'SUB_USER')
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}
 
@@ -28,8 +28,9 @@ export class AuditController {
   voterAdditions(
     @CurrentUser() actor: AuthenticatedUser,
     @Query('candidateId') candidateId?: string,
+    @Query('focusUserId') focusUserId?: string,
   ) {
-    return this.auditService.voterAdditionsSummary(actor, candidateId);
+    return this.auditService.voterAdditionsSummary(actor, candidateId, focusUserId);
   }
 
   /**

@@ -3,23 +3,15 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiFetch, ApiError } from '../services/api';
 import { AuthUser, ElectionType } from '../types/api';
-import { getHierarchyConfig } from '../utils/hierarchy';
-import { DISTRICT_OPTIONS, ulbsForDistrict } from '../constants/locations';
+import { DISTRICT_OPTIONS } from '../constants/locations';
+import { ASSEMBLY_CONSTITUENCIES_BY_DISTRICT } from '../constants/assemblyConstituencies';
 
 const ELECTION_TYPES: { value: ElectionType; label: string }[] = [
-  { value: 'PARLIAMENT', label: 'Parliament (Lok Sabha - MP)' },
   { value: 'ASSEMBLY', label: 'Assembly (State Legislature - MLA)' },
-  { value: 'LOCAL_BODY', label: 'Local Body (Municipal/Panchayat)' },
 ];
 
 const POSITIONS = [
-  { value: 'MP', label: 'Member of Parliament' },
   { value: 'MLA', label: 'Member of Legislative Assembly' },
-  { value: 'Mayor', label: 'Mayor' },
-  { value: 'Councillor', label: 'Councillor' },
-  { value: 'Chairman', label: 'Chairman' },
-  { value: 'President', label: 'President' },
-  { value: 'Ward Member', label: 'Ward Member' },
 ];
 
 function extractErrorMessage(error: unknown) {
@@ -59,29 +51,6 @@ interface FormData {
   reason: string;
 }
 
-// Tamil Nadu static states (for Parliament)
-const STATES = ['Tamil Nadu'];
-
-// Tamil Nadu Parliamentary Constituencies
-const PARLIAMENTARY_CONSTITUENCIES = [
-  'Chennai North', 'Chennai South', 'Chennai Central', 'Sriperumbudur',
-  'Kancheepuram', 'Arakkonam', 'Vellore', 'Krishnagiri', 'Dharmapuri',
-  'Tiruvannamalai', 'Arani', 'Villupuram', 'Kallakurichi', 'Salem',
-  'Namakkal', 'Erode', 'Tiruppur', 'Nilgiris', 'Coimbatore', 'Pollachi',
-  'Dindigul', 'Karur', 'Tiruchirappalli', 'Perambalur', 'Cuddalore',
-  'Chidambaram', 'Mayiladuthurai', 'Nagapattinam', 'Thanjavur', 'Sivaganga',
-  'Madurai', 'Theni', 'Virudhunagar', 'Ramanathapuram', 'Thoothukudi',
-  'Tirunelveli', 'Tenkasi', 'Kanyakumari',
-];
-
-// Tamil Nadu Assembly Constituency sample (a subset for demo)
-const ASSEMBLY_CONSTITUENCIES_BY_DISTRICT: Record<string, string[]> = {
-  'Chennai': ['Villivakkam', 'Kolathur', 'Perambur', 'Kilpauk', 'Egmore', 'Royapuram', 'Harbour', 'Chepauk-Triplicane', 'Thousand Lights', 'Anna Nagar', 'Virugambakkam', 'Saidapet', 'T. Nagar', 'Mylapore', 'Velachery', 'Sholinganallur'],
-  'Coimbatore': ['Kavundampalayam', 'Coimbatore North', 'Coimbatore South', 'Singanallur', 'Kinathukadavu', 'Pollachi', 'Valparai'],
-  'Tiruchirappalli': ['Lalgudi', 'Manachanallur', 'Srirangam', 'Tiruchirappalli West', 'Tiruchirappalli East', 'Thiruverumbur', 'Thuraiyur', 'Perambalur', 'Kunnam', 'Ariyalur'],
-  'Madurai': ['Madurai East', 'Madurai West', 'Madurai Central', 'Madurai South', 'Madurai North', 'Melur', 'Sholavandan', 'Usilampatti'],
-};
-
 export function SignupPage({ user }: { user: AuthUser | null }) {
   const navigate = useNavigate();
   const [submitted, setSubmitted] = useState(false);
@@ -95,25 +64,13 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
     taluk: '',
     constituency: '',
     assemblyConstituency: '',
-    electionType: '',
-    contestingFor: '',
+    electionType: 'ASSEMBLY',
+    contestingFor: 'MLA',
     partyName: '',
     reason: '',
   });
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // Get hierarchy config based on election type
-  const hierarchyConfig = useMemo(() => {
-    if (!formData.electionType) return null;
-    return getHierarchyConfig(formData.electionType);
-  }, [formData.electionType]);
-
-  // Get ULBs (Taluks) for selected district
-  const taluks = useMemo(() => {
-    if (!formData.district) return [];
-    return ulbsForDistrict(formData.district);
-  }, [formData.district]);
 
   // Get assembly constituencies for selected district
   const assemblyConstituencies = useMemo(() => {
@@ -121,24 +78,11 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
     return ASSEMBLY_CONSTITUENCIES_BY_DISTRICT[formData.district] || [];
   }, [formData.district]);
 
-  // Reset location fields when election type changes
-  useEffect(() => {
-    setFormData((prev) => ({
-      ...prev,
-      state: '',
-      district: '',
-      taluk: '',
-      constituency: '',
-      assemblyConstituency: '',
-    }));
-  }, [formData.electionType]);
-
   // Reset dependent fields when district changes
   useEffect(() => {
     setFormData((prev) => ({
       ...prev,
-      taluk: '',
-      constituency: prev.electionType === 'ASSEMBLY' ? '' : prev.constituency,
+      constituency: '',
       assemblyConstituency: '',
     }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -177,65 +121,26 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
       return;
     }
     
-    if (!formData.electionType) {
-      setErrorMessage('Please select an election type');
+    if (!formData.district) {
+      setErrorMessage('Please select a district');
       return;
     }
-
-    // Validate required fields based on election type
-    if (formData.electionType === 'LOCAL_BODY') {
-      if (!formData.district) {
-        setErrorMessage('Please select a district');
-        return;
-      }
-      if (!formData.taluk) {
-        setErrorMessage('Please select a taluk/ULB');
-        return;
-      }
-    } else if (formData.electionType === 'ASSEMBLY') {
-      if (!formData.district) {
-        setErrorMessage('Please select a district');
-        return;
-      }
-      if (!formData.constituency) {
-        setErrorMessage('Please select an assembly constituency');
-        return;
-      }
-    } else if (formData.electionType === 'PARLIAMENT') {
-      if (!formData.state) {
-        setErrorMessage('Please select a state');
-        return;
-      }
-      if (!formData.constituency) {
-        setErrorMessage('Please select a parliamentary constituency');
-        return;
-      }
+    if (!formData.constituency) {
+      setErrorMessage('Please select an assembly constituency');
+      return;
     }
 
     const payload: Record<string, unknown> = {
       fullName: formData.fullName,
       phone: formData.phone,
       email: formData.email,
-      electionType: formData.electionType,
+      electionType: 'ASSEMBLY',
       contestingFor: formData.contestingFor,
       partyName: formData.partyName || undefined,
       reason: formData.reason || undefined,
+      district: formData.district,
+      constituency: formData.constituency,
     };
-
-    // Add location fields based on election type
-    if (formData.electionType === 'LOCAL_BODY') {
-      payload.district = formData.district;
-      payload.taluk = formData.taluk;
-    } else if (formData.electionType === 'ASSEMBLY') {
-      payload.district = formData.district;
-      payload.constituency = formData.constituency;
-    } else if (formData.electionType === 'PARLIAMENT') {
-      payload.state = formData.state;
-      payload.constituency = formData.constituency;
-      if (formData.assemblyConstituency) {
-        payload.assemblyConstituency = formData.assemblyConstituency;
-      }
-    }
 
     signupMutation.mutate(payload);
   }
@@ -345,14 +250,13 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
             Election Type
           </h3>
           <label className="block">
-            <span className="mb-1 block text-sm">Select Election Type *</span>
+            <span className="mb-1 block text-sm">Election Type *</span>
             <select
               className="w-full rounded-xl border px-3 py-2.5"
               value={formData.electionType}
               onChange={(e) => handleChange('electionType', e.target.value as ElectionType)}
-              required
+              disabled
             >
-              <option value="">Select Type</option>
               {ELECTION_TYPES.map((type) => (
                 <option key={type.value} value={type.value}>
                   {type.label}
@@ -362,115 +266,48 @@ export function SignupPage({ user }: { user: AuthUser | null }) {
           </label>
         </div>
 
-        {/* Location Information - Dynamic based on election type */}
-        {formData.electionType && hierarchyConfig && (
-          <div>
-            <h3 className="mb-3 text-sm font-semibold text-slate-700 uppercase tracking-wide">
-              Location Details
-            </h3>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {/* State - for Parliament elections */}
-              {hierarchyConfig.showState && (
-                <label className="block">
-                  <span className="mb-1 block text-sm">{hierarchyConfig.stateLabel} *</span>
-                  <select
-                    className="w-full rounded-xl border px-3 py-2.5"
-                    value={formData.state}
-                    onChange={(e) => handleChange('state', e.target.value)}
-                    required
-                  >
-                    <option value="">Select State</option>
-                    {STATES.map((state) => (
-                      <option key={state} value={state}>
-                        {state}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
+        {/* Location Information */}
+        <div>
+          <h3 className="mb-3 text-sm font-semibold text-slate-700 uppercase tracking-wide">
+            Location Details
+          </h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1 block text-sm">District *</span>
+              <select
+                className="w-full rounded-xl border px-3 py-2.5"
+                value={formData.district}
+                onChange={(e) => handleChange('district', e.target.value)}
+                required
+              >
+                <option value="">Select District</option>
+                {DISTRICT_OPTIONS.map((district) => (
+                  <option key={district} value={district}>
+                    {district}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-              {/* District - for Local Body and Assembly */}
-              {hierarchyConfig.showDistrict && (
-                <label className="block">
-                  <span className="mb-1 block text-sm">District *</span>
-                  <select
-                    className="w-full rounded-xl border px-3 py-2.5"
-                    value={formData.district}
-                    onChange={(e) => handleChange('district', e.target.value)}
-                    required
-                  >
-                    <option value="">Select District</option>
-                    {DISTRICT_OPTIONS.map((district) => (
-                      <option key={district} value={district}>
-                        {district}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-
-              {/* Taluk/ULB - for Local Body */}
-              {hierarchyConfig.showTaluk && formData.district && (
-                <label className="block">
-                  <span className="mb-1 block text-sm">Taluk/ULB *</span>
-                  <select
-                    className="w-full rounded-xl border px-3 py-2.5"
-                    value={formData.taluk}
-                    onChange={(e) => handleChange('taluk', e.target.value)}
-                    required
-                  >
-                    <option value="">Select Taluk/ULB</option>
-                    {taluks.map((taluk) => (
-                      <option key={taluk} value={taluk}>
-                        {taluk}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-
-              {/* Assembly Constituency - for Assembly elections */}
-              {formData.electionType === 'ASSEMBLY' && formData.district && (
-                <label className="block">
-                  <span className="mb-1 block text-sm">{hierarchyConfig.constituencyLabel} *</span>
-                  <select
-                    className="w-full rounded-xl border px-3 py-2.5"
-                    value={formData.constituency}
-                    onChange={(e) => handleChange('constituency', e.target.value)}
-                    required
-                  >
-                    <option value="">Select Constituency</option>
-                    {assemblyConstituencies.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-
-              {/* Parliamentary Constituency - for Parliament elections */}
-              {formData.electionType === 'PARLIAMENT' && formData.state && (
-                <label className="block">
-                  <span className="mb-1 block text-sm">{hierarchyConfig.constituencyLabel} *</span>
-                  <select
-                    className="w-full rounded-xl border px-3 py-2.5"
-                    value={formData.constituency}
-                    onChange={(e) => handleChange('constituency', e.target.value)}
-                    required
-                  >
-                    <option value="">Select Constituency</option>
-                    {PARLIAMENTARY_CONSTITUENCIES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-            </div>
+            <label className="block">
+              <span className="mb-1 block text-sm">Assembly Constituency *</span>
+              <select
+                className="w-full rounded-xl border px-3 py-2.5"
+                value={formData.constituency}
+                onChange={(e) => handleChange('constituency', e.target.value)}
+                required
+                disabled={!formData.district}
+              >
+                <option value="">Select Constituency</option>
+                {assemblyConstituencies.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
-        )}
+        </div>
 
         {/* Candidate Details */}
         <div>

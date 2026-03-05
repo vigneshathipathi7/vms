@@ -1,0 +1,29 @@
+{
+  "district": "Sivagangai",
+  "constituencies": [
+    {
+      "name": "Karaikudi",
+      "acCode": "183",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Tiruppattur",
+      "acCode": "184",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Sivaganga",
+      "acCode": "185",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Manamadurai",
+      "acCode": "186",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

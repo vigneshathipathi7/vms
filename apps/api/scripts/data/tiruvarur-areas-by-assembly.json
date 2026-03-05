@@ -1,0 +1,29 @@
+{
+  "district": "Tiruvarur",
+  "constituencies": [
+    {
+      "name": "Thiruthuraipoondi",
+      "acCode": "165",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Mannargudi",
+      "acCode": "166",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Tiruvarur",
+      "acCode": "167",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Nannilam",
+      "acCode": "168",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

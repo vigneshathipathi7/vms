@@ -1,0 +1,41 @@
+{
+  "district": "Krishnagiri",
+  "constituencies": [
+    {
+      "name": "Uthangarai",
+      "acCode": "51",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Bargur",
+      "acCode": "52",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Krishnagiri",
+      "acCode": "53",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Veppanahalli",
+      "acCode": "54",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Hosur",
+      "acCode": "55",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Thalli",
+      "acCode": "56",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

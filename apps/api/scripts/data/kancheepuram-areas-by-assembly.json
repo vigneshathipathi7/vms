@@ -1,0 +1,23 @@
+{
+  "district": "Kancheepuram",
+  "constituencies": [
+    {
+      "name": "Sriperumbudur",
+      "acCode": "27",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Uthiramerur",
+      "acCode": "35",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Kancheepuram",
+      "acCode": "36",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

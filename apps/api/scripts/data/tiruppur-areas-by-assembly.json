@@ -1,0 +1,47 @@
+{
+  "district": "Tiruppur",
+  "constituencies": [
+    {
+      "name": "Dharapuram",
+      "acCode": "101",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Kangeyam",
+      "acCode": "102",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Tiruppur North",
+      "acCode": "108",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Tiruppur South",
+      "acCode": "109",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Palladam",
+      "acCode": "110",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Udumalpet",
+      "acCode": "111",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Madathukulam",
+      "acCode": "112",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "district": "Thiruvallur",
+  "constituencies": [
+    {
+      "name": "Tiruvottiyur",
+      "acCode": "1",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Gummidipoondi",
+      "acCode": "19",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Ponneri",
+      "acCode": "20",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Tiruvallur",
+      "acCode": "21",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Poonamallee",
+      "acCode": "22",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Avadi",
+      "acCode": "23",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Madhavaram",
+      "acCode": "24",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Ambattur",
+      "acCode": "25",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Maduravoyal",
+      "acCode": "26",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

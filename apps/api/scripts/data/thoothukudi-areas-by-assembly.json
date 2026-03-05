@@ -1,0 +1,41 @@
+{
+  "district": "Thoothukudi",
+  "constituencies": [
+    {
+      "name": "Vilathikulam",
+      "acCode": "212",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Thoothukudi",
+      "acCode": "213",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Tiruchendur",
+      "acCode": "214",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Srivaikuntam",
+      "acCode": "215",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Ottapidaram",
+      "acCode": "216",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Kovilpatti",
+      "acCode": "217",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

@@ -8,12 +8,13 @@ import { Prisma } from '@prisma/client';
 import argon2 from 'argon2';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { AuthenticatedUser } from '../auth/types/auth.types';
+import { AuthenticatedUser, UserRoleValue } from '../auth/types/auth.types';
 import { CreateSubUserDto } from './dto/create-sub-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateSubUserDto } from './dto/update-sub-user.dto';
 
 const AUDIT_USER_CREATED = 'USER_CREATED';
+
 const ADMIN_PROFILE_FIELDS = new Set<keyof UpdateProfileDto>([
   'fullName',
   'phone',
@@ -28,7 +29,8 @@ const ADMIN_PROFILE_FIELDS = new Set<keyof UpdateProfileDto>([
   'talukId',
   'villageId',
 ]);
-const SUB_USER_PROFILE_FIELDS = new Set<keyof UpdateProfileDto>([
+
+const NON_ADMIN_PROFILE_FIELDS = new Set<keyof UpdateProfileDto>([
   'fullName',
   'phone',
   'email',
@@ -38,10 +40,16 @@ const SUB_USER_PROFILE_FIELDS = new Set<keyof UpdateProfileDto>([
   'bio',
 ]);
 
+const CHILD_ROLE_BY_PARENT: Partial<Record<UserRoleValue, UserRoleValue>> = {
+  ADMIN: 'SUB_ADMIN',
+  SUB_ADMIN: 'SUB_USER',
+  SUB_USER: 'VOLUNTEER',
+};
+
 type UserProfileRow = {
   id: string;
   username: string;
-  role: 'ADMIN' | 'SUB_USER';
+  role: UserRoleValue;
   mfaEnabled: boolean;
   fullName: string | null;
   phone: string | null;
@@ -59,9 +67,11 @@ type UserProfileRow = {
   updatedAt: Date;
 };
 
-type SubUserListRow = {
+type ManagedUserRow = {
   id: string;
   username: string;
+  role: UserRoleValue;
+  parentUserId: string | null;
   fullName: string | null;
   phone: string | null;
   email: string | null;
@@ -69,6 +79,7 @@ type SubUserListRow = {
   managedWardId: string | null;
   managedVillage: { id: string; name: string } | null;
   managedWard: { id: string; wardNumber: string } | null;
+  assignedWards: { id: string; ward: { id: string; wardNumber: string } }[];
   mfaEnabled: boolean;
   createdAt: Date;
   votersAddedCount: number;
@@ -96,18 +107,36 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
-  ) { }
+  ) {}
 
-  async listSubUsers(candidateId: string) {
+  async listSubUsers(actor: AuthenticatedUser) {
+    const where = actor.role === 'SUPER_ADMIN'
+      ? {
+          role: { not: 'SUPER_ADMIN' as const },
+          candidateId: { not: null as unknown as string },
+        }
+      : await (async () => {
+          const descendantIds = await this.getDescendantUserIds(actor.id, actor.candidateId);
+          if (descendantIds.length === 0) {
+            return {
+              id: { in: ['__none__'] },
+              candidateId: actor.candidateId,
+            };
+          }
+          return {
+            candidateId: actor.candidateId,
+            id: { in: descendantIds },
+          };
+        })();
+
     const users = await this.prisma.user.findMany({
-      where: { 
-        role: 'SUB_USER',
-        candidateId, // Tenant filter
-      },
+      where,
       orderBy: { createdAt: 'asc' },
       select: {
         id: true,
         username: true,
+        role: true,
+        parentUserId: true,
         fullName: true,
         phone: true,
         email: true,
@@ -115,15 +144,23 @@ export class UsersService {
         managedWardId: true,
         managedVillage: { select: { id: true, name: true } },
         managedWard: { select: { id: true, wardNumber: true } },
+        assignedWards: {
+          select: {
+            id: true,
+            ward: { select: { id: true, wardNumber: true } },
+          },
+        },
         mfaEnabled: true,
         createdAt: true,
         _count: { select: { createdVoters: { where: { isDeleted: false } } } },
       },
     });
 
-    const items: SubUserListRow[] = users.map((u) => ({
+    const items: ManagedUserRow[] = users.map((u) => ({
       id: u.id,
       username: u.username,
+      role: u.role,
+      parentUserId: u.parentUserId,
       fullName: u.fullName,
       phone: u.phone,
       email: u.email,
@@ -131,6 +168,7 @@ export class UsersService {
       managedWardId: u.managedWardId,
       managedVillage: u.managedVillage,
       managedWard: u.managedWard,
+      assignedWards: u.assignedWards,
       mfaEnabled: u.mfaEnabled,
       createdAt: u.createdAt,
       votersAddedCount: u._count.createdVoters,
@@ -140,9 +178,13 @@ export class UsersService {
   }
 
   async createSubUser(payload: CreateSubUserDto, actor: AuthenticatedUser) {
-    // Check username uniqueness within the candidate
+    const targetRole = this.getChildRole(actor.role);
+    if (!targetRole) {
+      throw new ForbiddenException('Your role cannot create managed users');
+    }
+
     const existing = await this.prisma.user.findFirst({
-      where: { 
+      where: {
         candidateId: actor.candidateId,
         username: payload.username,
       },
@@ -153,7 +195,6 @@ export class UsersService {
       throw new ConflictException('Username already exists');
     }
 
-    // Check email uniqueness globally
     const emailExists = await this.prisma.user.findUnique({
       where: { email: payload.email },
       select: { id: true },
@@ -163,26 +204,42 @@ export class UsersService {
       throw new ConflictException('Email already exists');
     }
 
+    const actorWardScope = await this.getActorWardScope(actor.id, actor.candidateId, actor.role);
+    const wardInput = this.normalizeOptionalText(payload.managedWardId) ?? undefined;
+    const effectiveWardId = wardInput
+      ? await this.resolveWardIdFromInput(wardInput, actorWardScope)
+      : undefined;
+
+    if ((targetRole === 'SUB_ADMIN' || targetRole === 'SUB_USER' || targetRole === 'VOLUNTEER') && !effectiveWardId) {
+      throw new ForbiddenException(`${targetRole} must be assigned to one area`);
+    }
+
+    if (targetRole === 'VOLUNTEER') {
+      const actorRow = await this.prisma.user.findUnique({
+        where: { id: actor.id },
+        select: { managedWardId: true },
+      });
+      if (!actorRow?.managedWardId || actorRow.managedWardId !== effectiveWardId) {
+        throw new ForbiddenException('Volunteer must be assigned to the same ward as ward member');
+      }
+    }
+
     const passwordHash = await argon2.hash(payload.password);
 
     const created = await this.prisma.user.create({
       data: {
         username: payload.username,
         email: payload.email,
-        candidateId: actor.candidateId, // Set tenant
+        candidateId: actor.candidateId,
         passwordHash,
-        role: 'SUB_USER',
+        role: targetRole,
+        parentUserId: actor.id,
       },
-      select: {
-        id: true,
-      },
+      select: { id: true },
     });
 
-    const adminProfile = await this.getProfile(actor.id);
-    const inheritedConstituency = adminProfile.item.constituencyName || undefined;
-
-    // Support both managedWardId (single) and assignedWardIds (array) - use first ward from array
-    const effectiveWardId = payload.managedWardId || payload.assignedWardIds?.[0];
+    const managerProfile = await this.getProfile(actor.id);
+    const inheritedConstituency = managerProfile.item.constituencyName || undefined;
 
     try {
       await this.applyProfileColumns(created.id, {
@@ -193,6 +250,7 @@ export class UsersService {
         managedWardId: this.normalizeOptionalText(effectiveWardId),
         constituencyName: inheritedConstituency,
       });
+
     } catch (error) {
       if (this.isEmailConflict(error)) {
         throw new ConflictException('Email already exists');
@@ -207,7 +265,8 @@ export class UsersService {
       entityId: created.id,
       candidateId: actor.candidateId,
       metadata: {
-        createdRole: 'SUB_USER',
+        createdRole: targetRole,
+        parentUserId: actor.id,
       },
     });
 
@@ -216,20 +275,22 @@ export class UsersService {
   }
 
   async updateSubUser(subUserId: string, payload: UpdateSubUserDto, actor: AuthenticatedUser) {
-    // Verify the sub-user belongs to the same tenant
-    const subUser = await this.prisma.user.findFirst({
-      where: {
-        id: subUserId,
-        role: 'SUB_USER',
-        candidateId: actor.candidateId,
-      },
-    });
-
-    if (!subUser) {
-      throw new NotFoundException('Sub-user not found');
+    if (subUserId === actor.id) {
+      throw new ForbiddenException('Use profile endpoint to update your own account');
     }
 
-    const updates: { passwordHash?: string; phone?: string; email?: string } = {};
+    await this.assertManageableTarget(actor, subUserId);
+
+    const managedUser = await this.prisma.user.findFirst({
+      where: { id: subUserId, candidateId: actor.candidateId },
+      select: { id: true, role: true, managedWardId: true },
+    });
+
+    if (!managedUser) {
+      throw new NotFoundException('Managed user not found');
+    }
+
+    const updates: { passwordHash?: string; phone?: string; email?: string; parentUserId?: string | null } = {};
 
     if (payload.password) {
       updates.passwordHash = await argon2.hash(payload.password);
@@ -240,7 +301,6 @@ export class UsersService {
     }
 
     if (payload.email) {
-      // Check email uniqueness if provided
       const emailExists = await this.prisma.user.findFirst({
         where: { email: payload.email, id: { not: subUserId } },
       });
@@ -250,38 +310,79 @@ export class UsersService {
       updates.email = payload.email;
     }
 
-    if (Object.keys(updates).length === 0) {
+    if (payload.parentUserId !== undefined) {
+      const normalizedParent = this.normalizeOptionalText(payload.parentUserId) ?? null;
+      if (normalizedParent === subUserId) {
+        throw new ForbiddenException('User cannot be parent of itself');
+      }
+      if (normalizedParent) {
+        await this.assertManageableTarget(actor, normalizedParent, true);
+      }
+      updates.parentUserId = normalizedParent;
+    }
+
+    const actorWardScope = await this.getActorWardScope(actor.id, actor.candidateId, actor.role);
+
+    const managedWardIdInput = payload.managedWardId !== undefined
+      ? this.normalizeOptionalText(payload.managedWardId)
+      : undefined;
+    const managedWardId = managedWardIdInput === undefined
+      ? undefined
+      : managedWardIdInput === null
+        ? null
+        : await this.resolveWardIdFromInput(managedWardIdInput, actorWardScope);
+    const managedVillageId = payload.managedVillageId !== undefined
+      ? this.normalizeOptionalText(payload.managedVillageId) ?? null
+      : undefined;
+
+    const effectiveManagedWard = managedWardId === undefined ? managedUser.managedWardId : managedWardId;
+    if ((managedUser.role === 'SUB_ADMIN' || managedUser.role === 'SUB_USER' || managedUser.role === 'VOLUNTEER') && !effectiveManagedWard) {
+      throw new ForbiddenException(`${managedUser.role} must have one area`);
+    }
+
+    if (
+      Object.keys(updates).length === 0
+      && managedWardId === undefined
+      && managedVillageId === undefined
+    ) {
       return { message: 'No changes provided' };
     }
 
-    await this.prisma.user.update({
-      where: { id: subUserId },
-      data: updates,
+    await this.prisma.$transaction(async (tx) => {
+      if (Object.keys(updates).length > 0) {
+        await tx.user.update({ where: { id: subUserId }, data: updates });
+      }
+
+      if (managedWardId !== undefined || managedVillageId !== undefined) {
+        await this.applyProfileColumns(subUserId, {
+          ...(managedWardId !== undefined ? { managedWardId } : {}),
+          ...(managedVillageId !== undefined ? { managedVillageId } : {}),
+        });
+      }
     });
 
-    return { message: 'Sub-user updated' };
+    return { message: 'Managed user updated' };
   }
 
   async deleteSubUser(subUserId: string, actor: AuthenticatedUser) {
-    // Verify the sub-user belongs to the same tenant
-    const subUser = await this.prisma.user.findFirst({
-      where: {
-        id: subUserId,
-        role: 'SUB_USER',
-        candidateId: actor.candidateId,
-      },
-    });
-
-    if (!subUser) {
-      throw new NotFoundException('Sub-user not found');
+    if (subUserId === actor.id) {
+      throw new ForbiddenException('You cannot delete your own account');
     }
 
-    // Delete the sub-user
-    await this.prisma.user.delete({
-      where: { id: subUserId },
+    await this.assertManageableTarget(actor, subUserId);
+
+    const managedUser = await this.prisma.user.findFirst({
+      where: { id: subUserId, candidateId: actor.candidateId },
+      select: { id: true },
     });
 
-    return { message: 'Sub-user deleted' };
+    if (!managedUser) {
+      throw new NotFoundException('Managed user not found');
+    }
+
+    await this.prisma.user.delete({ where: { id: subUserId } });
+
+    return { message: 'Managed user deleted' };
   }
 
   async getProfile(userId: string) {
@@ -289,8 +390,17 @@ export class UsersService {
     if (!profile) {
       throw new NotFoundException('User not found');
     }
-    
-    // For ADMIN users, also fetch Candidate-level talukId/villageId
+
+    const managedLocation = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        managedVillageId: true,
+        managedWardId: true,
+        managedVillage: { select: { id: true, name: true } },
+        managedWard: { select: { id: true, wardNumber: true } },
+      },
+    });
+
     if (profile.role === 'ADMIN') {
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
@@ -316,16 +426,24 @@ export class UsersService {
 
       const candidate = user?.candidate;
 
-      return { 
+      return {
         item: {
           ...profile,
+          managedVillageId: managedLocation?.managedVillageId ?? profile.managedVillageId,
+          managedWardId: managedLocation?.managedWardId ?? profile.managedWardId,
+          managedVillage: managedLocation?.managedVillage ?? null,
+          managedWard: managedLocation?.managedWard ?? null,
           fullName: profile.fullName ?? candidate?.fullName ?? null,
           phone: profile.phone ?? candidate?.phone ?? null,
           electionLevel:
-            profile.electionLevel ??
-            (candidate?.electionType ? candidate.electionType.replace(/_/g, ' ') : null),
+            profile.electionLevel
+            ?? (candidate?.electionType ? candidate.electionType.replace(/_/g, ' ') : null),
           constituencyName:
-            profile.constituencyName ?? candidate?.constituency ?? candidate?.district ?? candidate?.taluk ?? null,
+            profile.constituencyName
+            ?? candidate?.constituency
+            ?? candidate?.district
+            ?? candidate?.taluk
+            ?? null,
           positionContesting: profile.positionContesting ?? candidate?.contestingFor ?? null,
           partyName: profile.partyName ?? candidate?.partyName ?? null,
           bio: profile.bio ?? candidate?.bio ?? null,
@@ -334,12 +452,20 @@ export class UsersService {
         },
       };
     }
-    
-    return { item: profile };
+
+    return {
+      item: {
+        ...profile,
+        managedVillageId: managedLocation?.managedVillageId ?? profile.managedVillageId,
+        managedWardId: managedLocation?.managedWardId ?? profile.managedWardId,
+        managedVillage: managedLocation?.managedVillage ?? null,
+        managedWard: managedLocation?.managedWard ?? null,
+      },
+    };
   }
 
   async updateProfile(payload: UpdateProfileDto, actor: AuthenticatedUser) {
-    const allowedFields = actor.role === 'ADMIN' ? ADMIN_PROFILE_FIELDS : SUB_USER_PROFILE_FIELDS;
+    const allowedFields = actor.role === 'ADMIN' ? ADMIN_PROFILE_FIELDS : NON_ADMIN_PROFILE_FIELDS;
     const updates: Partial<Record<ProfileColumn, string | null>> = {};
     const candidateUpdates: { talukId?: string | null; villageId?: string | null } = {};
     const keys = Object.keys(payload) as (keyof UpdateProfileDto)[];
@@ -354,7 +480,6 @@ export class UsersService {
         throw new ForbiddenException(`Field "${key}" cannot be updated for your role`);
       }
 
-      // Handle Candidate-level fields separately
       if (key === 'talukId' || key === 'villageId') {
         candidateUpdates[key] = this.normalizeOptionalText(value) ?? null;
       } else {
@@ -367,12 +492,10 @@ export class UsersService {
     }
 
     try {
-      // Update User fields
       if (Object.keys(updates).length > 0) {
         await this.applyProfileColumns(actor.id, updates);
       }
-      
-      // Update Candidate fields for panchayat elections (ADMIN only)
+
       if (Object.keys(candidateUpdates).length > 0 && actor.role === 'ADMIN') {
         await this.prisma.candidate.update({
           where: { id: actor.candidateId },
@@ -471,6 +594,114 @@ export class UsersService {
     await this.prisma.$executeRaw(
       Prisma.sql`UPDATE "User" SET ${Prisma.join(assignments, ', ')} WHERE id = ${userId}`,
     );
+  }
+
+  private getChildRole(role: UserRoleValue): UserRoleValue | null {
+    return CHILD_ROLE_BY_PARENT[role] ?? null;
+  }
+
+  private async assertManageableTarget(
+    actor: AuthenticatedUser,
+    targetUserId: string,
+    includeSelf = false,
+  ) {
+    if (actor.role === 'SUPER_ADMIN') {
+      return;
+    }
+
+    const allowedIds = await this.getDescendantUserIds(actor.id, actor.candidateId);
+    if (includeSelf) {
+      allowedIds.push(actor.id);
+    }
+
+    if (!allowedIds.includes(targetUserId)) {
+      throw new ForbiddenException('Target user is outside your hierarchy');
+    }
+  }
+
+  private async getDescendantUserIds(rootUserId: string, candidateId: string): Promise<string[]> {
+    const descendants: string[] = [];
+    let frontier: string[] = [rootUserId];
+
+    while (frontier.length > 0) {
+      const children = await this.prisma.user.findMany({
+        where: {
+          candidateId,
+          parentUserId: { in: frontier },
+        },
+        select: { id: true },
+      });
+
+      const childIds = children.map((row) => row.id);
+      if (childIds.length === 0) {
+        break;
+      }
+
+      descendants.push(...childIds);
+      frontier = childIds;
+    }
+
+    return descendants;
+  }
+
+  private async getActorWardScope(
+    actorId: string,
+    candidateId: string,
+    actorRole: UserRoleValue,
+  ): Promise<string[] | null> {
+    if (actorRole === 'ADMIN' || actorRole === 'SUPER_ADMIN') {
+      return null;
+    }
+
+    const actor = await this.prisma.user.findFirst({
+      where: { id: actorId, candidateId },
+      select: {
+        managedWardId: true,
+      },
+    });
+
+    if (!actor) {
+      return [];
+    }
+
+    return actor.managedWardId ? [actor.managedWardId] : [];
+  }
+
+  private async resolveWardIdFromInput(
+    wardInput: string,
+    actorWardScope: string[] | null,
+  ): Promise<string> {
+    const trimmedInput = wardInput.trim();
+
+    const wardById = await this.prisma.ward.findUnique({
+      where: { id: trimmedInput },
+      select: { id: true },
+    });
+
+    if (wardById) {
+      if (actorWardScope !== null && !actorWardScope.includes(wardById.id)) {
+        throw new ForbiddenException('Area assignment exceeds your scope');
+      }
+      return wardById.id;
+    }
+
+    const wardsByNumber = await this.prisma.ward.findMany({
+      where: {
+        wardNumber: trimmedInput,
+        ...(actorWardScope !== null ? { id: { in: actorWardScope } } : {}),
+      },
+      select: { id: true },
+    });
+
+    if (wardsByNumber.length === 0) {
+      throw new NotFoundException('Ward not found for the entered ward number');
+    }
+
+    if (wardsByNumber.length > 1) {
+      throw new ConflictException('Multiple wards found for this ward number. Enter a unique ward number');
+    }
+
+    return wardsByNumber[0].id;
   }
 
   private normalizeOptionalText(value: string | undefined) {

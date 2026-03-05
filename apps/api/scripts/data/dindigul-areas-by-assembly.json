@@ -1,0 +1,47 @@
+{
+  "district": "Dindigul",
+  "constituencies": [
+    {
+      "name": "Palani",
+      "acCode": "126",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Oddanchatram",
+      "acCode": "127",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Athoor",
+      "acCode": "128",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Nilakkottai",
+      "acCode": "129",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Natham",
+      "acCode": "130",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Dindigul",
+      "acCode": "131",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Vedasandur",
+      "acCode": "132",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "district": "Tenkasi",
+  "constituencies": [
+    {
+      "name": "Sankarankovil",
+      "acCode": "218",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Vasudevanallur",
+      "acCode": "219",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Kadayanallur",
+      "acCode": "220",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Tenkasi",
+      "acCode": "221",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Alangulam",
+      "acCode": "222",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

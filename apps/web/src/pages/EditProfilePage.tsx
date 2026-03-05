@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../services/api';
 import { UserProfileResponse, Taluk, Village } from '../types/api';
 import { useDistricts } from '../hooks/useLocations';
+import { normalizeDistrictName } from '../constants/locations';
 
 const ELECTION_LEVELS = [
     'MLA',
@@ -183,7 +184,7 @@ export function EditProfilePage() {
                                 <option value="">Select District</option>
                                 {districts.map((d: any) => (
                                     <option key={d.id} value={d.name}>
-                                        {d.name}
+                                        {normalizeDistrictName(d.name)}
                                     </option>
                                 ))}
                             </select>

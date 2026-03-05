@@ -1,0 +1,35 @@
+{
+  "district": "Tirunelveli",
+  "constituencies": [
+    {
+      "name": "Tirunelveli",
+      "acCode": "223",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Ambasamudram",
+      "acCode": "224",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Palayamkottai",
+      "acCode": "225",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Nanguneri",
+      "acCode": "226",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Radhapuram",
+      "acCode": "227",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

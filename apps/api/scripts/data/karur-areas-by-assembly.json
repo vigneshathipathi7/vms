@@ -1,0 +1,29 @@
+{
+  "district": "Karur",
+  "constituencies": [
+    {
+      "name": "Aravakurichi",
+      "acCode": "133",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Karur",
+      "acCode": "134",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Krishnarayapuram",
+      "acCode": "135",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Kulithalai",
+      "acCode": "136",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

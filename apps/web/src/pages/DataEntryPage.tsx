@@ -1,20 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useMemo, useState } from 'react';
-import { apiFetch, buildQuery } from '../services/api';
+import { ApiError, apiFetch, buildQuery } from '../services/api';
 import { Taluk, Village, Ward, VotersResponse, ZonesResponse } from '../types/api';
 import { useCurrentUser } from '../hooks/useCurrentUser';
-import { getHierarchyConfig } from '../utils/hierarchy';
+import { DISTRICT_OPTIONS, normalizeDistrictName } from '../constants/locations';
 
 const INITIAL_FORM = {
   name: '',
   contactNumber: '',
   voterId: '',
-  // Dynamic hierarchy fields
-  constituency: '',
-  assemblyConstituency: '',
-  talukId: '',
-  villageId: '',
-  wardId: '',
+  areaId: '',
+  wardNumber: '',
   address: '',
   zoneId: '',
 };
@@ -61,75 +57,162 @@ interface WardOption {
   };
 }
 
+function normalizeText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/\(sc\)|\(st\)/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function extractErrorMessage(error: unknown) {
+  if (error instanceof ApiError && error.payload && typeof error.payload === 'object') {
+    const value = (error.payload as { message?: unknown }).message;
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (Array.isArray(value)) {
+      return value.join(', ');
+    }
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return 'Failed to add voter';
+}
+
 export function DataEntryPage() {
   const queryClient = useQueryClient();
-  const { electionType, electionLevel, district, candidate } = useCurrentUser();
+  const { electionLevel, district, constituency, candidate, user } = useCurrentUser();
   const [form, setForm] = useState(INITIAL_FORM);
   const [formError, setFormError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [selectedDistrictId, setSelectedDistrictId] = useState('');
+  const [selectedAssemblyId, setSelectedAssemblyId] = useState('');
+  const role = user?.role ?? 'SUB_USER';
+  const isSuperAdminRole = role === 'SUPER_ADMIN';
+  const isSubAdminRole = role === 'SUB_ADMIN';
+  const isAreaDropdownRole = role === 'SUPER_ADMIN' || role === 'ADMIN';
+  const isWardStaticRole = role === 'SUB_USER' || role === 'VOLUNTEER';
 
-  // Get hierarchy configuration based on election type
-  const hierarchyConfig = useMemo(
-    () => getHierarchyConfig(electionType || 'LOCAL_BODY'),
-    [electionType]
+  const districtsQuery = useQuery({
+    queryKey: ['locations', 'districts', 'entry'],
+    queryFn: () => apiFetch<DistrictOption[]>('/locations/districts'),
+    enabled: isSuperAdminRole,
+  });
+
+  const validDistrictNames = useMemo(
+    () => new Set(DISTRICT_OPTIONS.map((name) => normalizeText(name))),
+    [],
   );
 
-  // Fetch taluks list (for LOCAL_BODY), filtered by candidate's district
-  // For LOCAL_BODY elections, fetch LGD blocks (which have villages)
-  const taluksQuery = useQuery({
-    queryKey: ['locations', 'taluks', 'list', district, electionType],
-    queryFn: () => {
-      const params = new URLSearchParams();
-      if (district) params.set('districtName', district);
-      const queryString = params.toString();
-      return apiFetch<Taluk[]>(`/locations/taluks/list${queryString ? `?${queryString}` : ''}`);
-    },
-    enabled: hierarchyConfig.showTaluk,
-  });
-
-  // Fetch villages based on selected taluk (for LOCAL_BODY)
-  const villagesQuery = useQuery({
-    queryKey: ['locations', 'villages', form.talukId],
-    queryFn: () => apiFetch<Village[]>(`/locations/taluks/${form.talukId}/villages`),
-    enabled: hierarchyConfig.showVillage && !!form.talukId,
-  });
-
-  // Fetch wards based on selected village (for LOCAL_BODY)
-  // For ASSEMBLY/PARLIAMENT, wards would be fetched differently
-  const wardsQuery = useQuery({
-    queryKey: ['locations', 'wards', form.villageId],
-    queryFn: () => apiFetch<Ward[]>(`/locations/villages/${form.villageId}/wards`),
-    enabled: hierarchyConfig.showVillage && !!form.villageId,
-  });
-
-  // Fetch districts to resolve districtId for assembly constituency endpoint
-  const districtsQuery = useQuery({
-    queryKey: ['locations', 'districts'],
-    queryFn: () => apiFetch<DistrictOption[]>('/locations/districts'),
-    enabled: hierarchyConfig.showConstituency || hierarchyConfig.showAssemblyConstituency,
-  });
-
-  const districtId = useMemo(() => {
-    if (!district || !districtsQuery.data) {
-      return undefined;
-    }
-    return districtsQuery.data.find((item) => item.name === district)?.id;
-  }, [district, districtsQuery.data]);
+  const districtOptions = useMemo(
+    () => (districtsQuery.data ?? []).filter((item) => validDistrictNames.has(normalizeText(normalizeDistrictName(item.name)))),
+    [districtsQuery.data, validDistrictNames],
+  );
+  const selectedDistrict = districtOptions.find((item) => item.id === selectedDistrictId) ?? null;
 
   const assembliesQuery = useQuery({
-    queryKey: ['locations', 'assemblies', districtId],
+    queryKey: ['locations', 'assemblies', 'entry', selectedDistrictId],
     queryFn: () =>
       apiFetch<AssemblyConstituencyOption[]>(
-        `/locations/assemblies${districtId ? buildQuery({ districtId }) : ''}`,
+        `/locations/assemblies${buildQuery({ districtId: selectedDistrictId })}`,
       ),
-    enabled: hierarchyConfig.showConstituency || hierarchyConfig.showAssemblyConstituency,
+    enabled: isSuperAdminRole && !!selectedDistrictId,
   });
 
-  const parliamentaryQuery = useQuery({
-    queryKey: ['locations', 'parliamentary'],
-    queryFn: () => apiFetch<ParliamentaryConstituencyOption[]>('/locations/parliamentary'),
-    enabled: hierarchyConfig.showConstituency && electionType === 'PARLIAMENT',
+  const assemblyOptions = assembliesQuery.data ?? [];
+  const selectedAssembly = assemblyOptions.find((item) => item.id === selectedAssemblyId) ?? null;
+
+  const profileQuery = useQuery({
+    queryKey: ['users', 'profile', 'entry-scope'],
+    queryFn: () => apiFetch<{ item: { managedWardId: string | null; managedVillageId: string | null } }>('/users/profile'),
+    enabled: !isAreaDropdownRole,
   });
+
+  const wardsListQuery = useQuery({
+    queryKey: ['locations', 'wards', 'list', 'entry', district, selectedDistrict?.name],
+    queryFn: () =>
+      apiFetch<WardOption[]>(
+        `/locations/wards/list${buildQuery({
+          districtName: isSuperAdminRole ? selectedDistrict?.name ?? undefined : district ?? undefined,
+        })}`,
+      ),
+  });
+
+  const wardsList = wardsListQuery.data ?? [];
+
+  const areaOptions = useMemo(() => {
+    const seen = new Map<string, { id: string; name: string }>();
+    wardsList.forEach((ward) => {
+      if (!seen.has(ward.village.id)) {
+        seen.set(ward.village.id, { id: ward.village.id, name: ward.village.name });
+      }
+    });
+    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [wardsList]);
+
+  const effectiveDistrictName = isSuperAdminRole
+    ? selectedDistrict?.name ?? null
+    : district ?? null;
+  const effectiveAssemblyName = isSuperAdminRole
+    ? selectedAssembly?.name ?? null
+    : constituency ?? null;
+
+  const areaScopeQuery = useQuery({
+    queryKey: ['locations', 'areas', 'entry', effectiveDistrictName, effectiveAssemblyName],
+    queryFn: () =>
+      apiFetch<{ matched: boolean; areaNames: string[] }>(
+        `/locations/areas/by-assembly${buildQuery({ districtName: effectiveDistrictName ?? undefined, assemblyName: effectiveAssemblyName ?? undefined })}`,
+      ),
+    enabled: isAreaDropdownRole && !!effectiveDistrictName && !!effectiveAssemblyName,
+  });
+
+  const filteredAreaOptions = useMemo(() => {
+    if (isSuperAdminRole && !selectedAssemblyId) {
+      return [];
+    }
+
+    if (isSuperAdminRole && !areaScopeQuery.data?.matched) {
+      return [];
+    }
+
+    if (!areaScopeQuery.data?.matched) {
+      return areaOptions;
+    }
+
+    const allowedAreaNames = new Set(areaScopeQuery.data.areaNames.map((name) => normalizeText(name)));
+    return areaOptions.filter((area) => allowedAreaNames.has(normalizeText(area.name)));
+  }, [areaOptions, areaScopeQuery.data, isSuperAdminRole, selectedAssemblyId]);
+
+  const disableAreaSelect = isSuperAdminRole
+    ? !selectedDistrictId || !selectedAssemblyId || filteredAreaOptions.length === 0
+    : false;
+
+  const managedWard = useMemo(
+    () => wardsList.find((ward) => ward.id === (profileQuery.data?.item.managedWardId ?? '')),
+    [wardsList, profileQuery.data?.item.managedWardId],
+  );
+
+  const assignedAreaId = profileQuery.data?.item.managedVillageId
+    ?? managedWard?.village.id
+    ?? null;
+
+  const assignedAreaName = assignedAreaId
+    ? filteredAreaOptions.find((area) => area.id === assignedAreaId)?.name
+      ?? areaOptions.find((area) => area.id === assignedAreaId)?.name
+      ?? null
+    : managedWard?.village.name ?? null;
+
+  const staticAreaLabel = assignedAreaName ?? 'Assigned Area';
+  const staticWardLabel = managedWard ? managedWard.wardNumber : 'Assigned Ward';
+
+  const wardById = useMemo(() => {
+    const map = new Map<string, WardOption>();
+    wardsList.forEach((ward) => map.set(ward.id, ward));
+    return map;
+  }, [wardsList]);
 
   // Fetch zones
   const zonesQuery = useQuery({
@@ -151,32 +234,68 @@ export function DataEntryPage() {
 
   const createMutation = useMutation({
     mutationFn: () => {
-      // Build payload based on election type
+      const constituencyValue = isSuperAdminRole
+        ? selectedAssembly?.name ?? ''
+        : constituency ?? 'Default Assembly Constituency';
+
+      if (isSuperAdminRole && !selectedDistrictId) {
+        throw new Error('District is required');
+      }
+
+      if (isSuperAdminRole && !selectedAssemblyId) {
+        throw new Error('Assembly constituency is required');
+      }
+
+      if (!constituencyValue) {
+        throw new Error('Assembly constituency is required');
+      }
+
+      if (!isWardStaticRole && !form.wardNumber.trim()) {
+        throw new Error('Ward number is required');
+      }
+
+      if (isAreaDropdownRole && !form.areaId) {
+        throw new Error('Area is required');
+      }
+
+      if (isSubAdminRole && !assignedAreaId) {
+        throw new Error('Assigned area not found for your account');
+      }
+
+      let matchedWards: WardOption[] = [];
+
+      if (isWardStaticRole) {
+        if (!managedWard) {
+          throw new Error('Assigned ward not found for your account');
+        }
+        matchedWards = [managedWard];
+      } else {
+        const effectiveAreaId = isAreaDropdownRole ? form.areaId : assignedAreaId;
+
+        const scopedWards = effectiveAreaId
+          ? wardsList.filter((ward) => ward.village.id === effectiveAreaId)
+          : wardsList;
+
+        matchedWards = scopedWards.filter((ward) => ward.wardNumber === form.wardNumber.trim());
+
+        if (matchedWards.length === 0) {
+          throw new Error('No ward found for the entered ward number');
+        }
+
+        if (matchedWards.length > 1) {
+          throw new Error('Multiple wards matched. Narrow by selecting the correct area');
+        }
+      }
+
       const payload: Record<string, string> = {
         name: form.name,
         contactNumber: form.contactNumber,
         voterId: form.voterId,
-        wardId: form.wardId,
+        constituency: constituencyValue,
+        wardId: matchedWards[0].id,
         address: form.address,
         zoneId: form.zoneId,
       };
-
-      // Add hierarchy-specific fields
-      if (hierarchyConfig.showState) {
-        payload.state = candidate?.state || 'Tamil Nadu';
-      }
-      if (hierarchyConfig.showConstituency && form.constituency) {
-        payload.constituency = form.constituency;
-      }
-      if (hierarchyConfig.showAssemblyConstituency && form.assemblyConstituency) {
-        payload.assemblyConstituency = form.assemblyConstituency;
-      }
-      if (hierarchyConfig.showTaluk && form.talukId) {
-        payload.talukId = form.talukId;
-      }
-      if (hierarchyConfig.showVillage && form.villageId) {
-        payload.villageId = form.villageId;
-      }
 
       return apiFetch('/voters', {
         method: 'POST',
@@ -184,24 +303,22 @@ export function DataEntryPage() {
       });
     },
     onSuccess: async () => {
-      setForm((prev) => ({ ...INITIAL_FORM, zoneId: prev.zoneId }));
+      setForm((prev) => ({
+        ...INITIAL_FORM,
+        zoneId: prev.zoneId,
+        areaId: prev.areaId,
+        wardNumber: isWardStaticRole ? prev.wardNumber : '',
+      }));
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['voters'] }),
         queryClient.invalidateQueries({ queryKey: ['zones', 'list'] }),
         queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] }),
       ]);
     },
+    onError: (error) => {
+      setFormError(extractErrorMessage(error));
+    },
   });
-
-  const handleTalukChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const talukId = event.target.value;
-    setForm((prev) => ({ ...prev, talukId, villageId: '', wardId: '' }));
-  };
-
-  const handleVillageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const villageId = event.target.value;
-    setForm((prev) => ({ ...prev, villageId, wardId: '' }));
-  };
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -220,116 +337,13 @@ export function DataEntryPage() {
     createMutation.mutate();
   }
 
-  const taluks = taluksQuery.data ?? [];
-  const villages = villagesQuery.data ?? [];
-  const wards = wardsQuery.data ?? [];
   const zones = zonesQuery.data?.items ?? [];
-  const assemblies = assembliesQuery.data ?? [];
-  const parliamentary = parliamentaryQuery.data ?? [];
-
-  const constituencyOptions = useMemo(() => {
-    if (electionType === 'PARLIAMENT') {
-      return parliamentary.map((item) => item.name);
-    }
-    return assemblies.map((item) => item.name);
-  }, [electionType, parliamentary, assemblies]);
-
-  const assemblyConstituencyOptions = useMemo(() => {
-    if (electionType === 'PARLIAMENT' && form.constituency) {
-      const selectedParliamentaryId = parliamentary.find(
-        (item) => item.name === form.constituency,
-      )?.id;
-
-      if (!selectedParliamentaryId) {
-        return [];
-      }
-
-      return assemblies
-        .filter((item) => item.parliamentaryConstituencyId === selectedParliamentaryId)
-        .map((item) => item.name);
-    }
-
-    return assemblies.map((item) => item.name);
-  }, [electionType, form.constituency, assemblies, parliamentary]);
-
-  const selectedAssembly = useMemo(() => {
-    if (electionType !== 'ASSEMBLY' || !form.constituency) {
-      return null;
-    }
-    return assemblies.find((item) => item.name === form.constituency) ?? null;
-  }, [electionType, form.constituency, assemblies]);
-
-  const selectedParliamentaryId = useMemo(() => {
-    if (electionType !== 'PARLIAMENT' || !form.constituency) {
-      return undefined;
-    }
-    return parliamentary.find((item) => item.name === form.constituency)?.id;
-  }, [electionType, form.constituency, parliamentary]);
-
-  const wardFilterDistrictNames = useMemo(() => {
-    if (electionType === 'ASSEMBLY') {
-      const districtName = selectedAssembly?.district?.name;
-      return districtName ? [districtName] : [];
-    }
-
-    if (electionType === 'PARLIAMENT') {
-      if (form.assemblyConstituency) {
-        const selectedAssemblyConstituency = assemblies.find(
-          (item) => item.name === form.assemblyConstituency,
-        );
-        const districtName = selectedAssemblyConstituency?.district?.name;
-        return districtName ? [districtName] : [];
-      }
-
-      if (!selectedParliamentaryId) {
-        return [];
-      }
-
-      const districtSet = new Set(
-        assemblies
-          .filter((item) => item.parliamentaryConstituencyId === selectedParliamentaryId)
-          .map((item) => item.district?.name)
-          .filter((value): value is string => Boolean(value)),
-      );
-      return Array.from(districtSet);
-    }
-
-    return district ? [district] : [];
-  }, [
-    electionType,
-    selectedAssembly,
-    selectedParliamentaryId,
-    form.assemblyConstituency,
-    assemblies,
-    district,
-  ]);
-
-  const wardsListQuery = useQuery({
-    queryKey: ['locations', 'wards', 'list', wardFilterDistrictNames, electionType],
-    queryFn: () =>
-      apiFetch<WardOption[]>(
-        `/locations/wards/list${buildQuery({
-          districtNames: wardFilterDistrictNames.length
-            ? wardFilterDistrictNames.join(',')
-            : undefined,
-        })}`,
-      ),
-    enabled:
-      hierarchyConfig.showWard &&
-      !hierarchyConfig.showVillage &&
-      wardFilterDistrictNames.length > 0,
-  });
-
-  const allWardsListQuery = useQuery({
-    queryKey: ['locations', 'wards', 'list', 'all', electionType],
-    queryFn: () => apiFetch<WardOption[]>('/locations/wards/list'),
-    enabled: hierarchyConfig.showWard && !hierarchyConfig.showVillage,
-  });
-
-  const filteredWards = wardsListQuery.data ?? [];
-  const allWards = allWardsListQuery.data ?? [];
-  const wardsList = filteredWards.length > 0 ? filteredWards : allWards;
-  const isWardFallback = filteredWards.length === 0 && allWards.length > 0;
+  const defaultDistrict = isSuperAdminRole
+    ? selectedDistrict?.name ?? '-'
+    : district ?? 'Default District';
+  const defaultAssembly = isSuperAdminRole
+    ? selectedAssembly?.name ?? '-'
+    : constituency ?? 'Default Assembly Constituency';
 
   return (
     <section className="space-y-6">
@@ -346,6 +360,13 @@ export function DataEntryPage() {
             </span>
           )}
         </p>
+        {!isSuperAdminRole && (
+          <p className="mt-2 text-sm font-semibold text-slate-700">
+            District: <span className="font-bold text-slate-900">{defaultDistrict}</span>
+            <span className="mx-2 text-slate-400">|</span>
+            Assembly: <span className="font-bold text-slate-900">{defaultAssembly}</span>
+          </p>
+        )}
       </div>
 
       <form className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-3" onSubmit={onSubmit}>
@@ -386,129 +407,84 @@ export function DataEntryPage() {
           required
         />
 
-        {/* Dynamic Hierarchy Fields based on Election Type */}
-        
-        {/* Constituency dropdown - for ASSEMBLY and PARLIAMENT */}
-        {hierarchyConfig.showConstituency && (
-          <select
-            className="rounded-xl border px-3 py-2.5 text-sm"
-            value={form.constituency}
-            onChange={(event) =>
-              setForm((prev) => ({
-                ...prev,
-                constituency: event.target.value,
-                assemblyConstituency: hierarchyConfig.showAssemblyConstituency ? '' : prev.assemblyConstituency,
-                wardId: '',
-              }))
-            }
-            disabled={constituencyOptions.length === 0}
-            required
-          >
-            <option value="">Select {hierarchyConfig.constituencyLabel}</option>
-            {constituencyOptions.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
+        {isSuperAdminRole && (
+          <>
+            <select
+              className="rounded-xl border px-3 py-2.5 text-sm"
+              value={selectedDistrictId}
+              onChange={(event) => {
+                const nextDistrictId = event.target.value;
+                setSelectedDistrictId(nextDistrictId);
+                setSelectedAssemblyId('');
+                setForm((prev) => ({ ...prev, areaId: '', wardNumber: '' }));
+              }}
+              required
+            >
+              <option value="">Select District</option>
+              {districtOptions.map((item) => (
+                <option key={item.id} value={item.id}>{normalizeDistrictName(item.name)}</option>
+              ))}
+            </select>
+
+            <select
+              className="rounded-xl border px-3 py-2.5 text-sm"
+              value={selectedAssemblyId}
+              onChange={(event) => {
+                const nextAssemblyId = event.target.value;
+                setSelectedAssemblyId(nextAssemblyId);
+                setForm((prev) => ({ ...prev, areaId: '', wardNumber: '' }));
+              }}
+              required
+              disabled={!selectedDistrictId}
+            >
+              <option value="">Select Assembly Constituency</option>
+              {assemblyOptions.map((item) => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))}
+            </select>
+          </>
         )}
 
-        {/* Assembly Constituency - for PARLIAMENT */}
-        {hierarchyConfig.showAssemblyConstituency && (
+        {isAreaDropdownRole ? (
           <select
             className="rounded-xl border px-3 py-2.5 text-sm"
-            value={form.assemblyConstituency}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, assemblyConstituency: event.target.value, wardId: '' }))
-            }
-            disabled={assemblyConstituencyOptions.length === 0}
+            value={form.areaId}
+            onChange={(event) => setForm((prev) => ({ ...prev, areaId: event.target.value }))}
             required
+            disabled={disableAreaSelect}
           >
-            <option value="">Select Assembly Constituency</option>
-            {assemblyConstituencyOptions.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        )}
-
-        {/* Taluk, Village, Ward cascading dropdowns - for LOCAL_BODY */}
-        {hierarchyConfig.showTaluk && (
-          <select
-            className="rounded-xl border px-3 py-2.5 text-sm"
-            value={form.talukId}
-            onChange={handleTalukChange}
-            required
-          >
-            <option value="">Select Taluk</option>
-            {taluks.map((taluk) => (
-              <option key={taluk.id} value={taluk.id}>
-                {taluk.name}
-              </option>
-            ))}
-          </select>
-        )}
-
-        {hierarchyConfig.showVillage && (
-          <select
-            className="rounded-xl border px-3 py-2.5 text-sm"
-            value={form.villageId}
-            onChange={handleVillageChange}
-            required
-            disabled={!form.talukId}
-          >
-            <option value="">{form.talukId ? 'Select Village' : 'Select Taluk first'}</option>
-            {villages.map((village) => (
-              <option key={village.id} value={village.id}>
-                {village.name}
-              </option>
-            ))}
-          </select>
-        )}
-
-        {/* Ward dropdown - always shown */}
-        {hierarchyConfig.showVillage ? (
-          <select
-            className="rounded-xl border px-3 py-2.5 text-sm"
-            value={form.wardId}
-            onChange={(event) => setForm((prev) => ({ ...prev, wardId: event.target.value }))}
-            required
-            disabled={!form.villageId}
-          >
-            <option value="">{form.villageId ? `Select ${hierarchyConfig.wardLabel}` : 'Select Village first'}</option>
-            {wards.map((ward) => (
-              <option key={ward.id} value={ward.id}>
-                {hierarchyConfig.wardLabel} {ward.wardNumber}
+            <option value="">Select Area</option>
+            {filteredAreaOptions.map((area) => (
+              <option key={area.id} value={area.id}>
+                {area.name}
               </option>
             ))}
           </select>
         ) : (
-          <div className="space-y-2">
-            <select
-              className="rounded-xl border px-3 py-2.5 text-sm"
-              value={form.wardId}
-              onChange={(event) => setForm((prev) => ({ ...prev, wardId: event.target.value }))}
-              disabled={
-                wardsList.length === 0 ||
-                wardsListQuery.isLoading ||
-                allWardsListQuery.isLoading
-              }
-              required
-            >
-              <option value="">Select {hierarchyConfig.wardLabel}</option>
-              {wardsList.map((ward) => (
-                <option key={ward.id} value={ward.id}>
-                  {hierarchyConfig.wardLabel} {ward.wardNumber} - {ward.village.name}
-                </option>
-              ))}
-            </select>
-            {isWardFallback && (
-              <p className="text-xs text-amber-700">
-                No ward data matched the selected constituency exactly. Showing all available wards.
-              </p>
-            )}
+          <div className="rounded-xl border bg-slate-50 px-3 py-2.5 text-sm text-slate-700">
+            Area: <strong>{staticAreaLabel}</strong>
           </div>
+        )}
+
+        {isWardStaticRole ? (
+          <div className="rounded-xl border bg-slate-50 px-3 py-2.5 text-sm text-slate-700">
+            Ward: <strong>{staticWardLabel}</strong>
+          </div>
+        ) : (
+          <input
+            className="rounded-xl border px-3 py-2.5 text-sm"
+            placeholder="Ward Number"
+            value={form.wardNumber}
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                wardNumber: event.target.value.replace(/\D/g, ''),
+              }))
+            }
+            inputMode="numeric"
+            pattern="[0-9]+"
+            required
+          />
         )}
 
         {/* Row 3: Address, Zone, Submit */}
@@ -556,12 +532,10 @@ export function DataEntryPage() {
               <tr className="border-b text-slate-500">
                 <th className="px-2 py-2">Name</th>
                 <th className="px-2 py-2">Voter ID</th>
-                {hierarchyConfig.showState && <th className="px-2 py-2">{hierarchyConfig.stateLabel}</th>}
-                {hierarchyConfig.showConstituency && <th className="px-2 py-2">{hierarchyConfig.constituencyLabel}</th>}
-                {hierarchyConfig.showAssemblyConstituency && <th className="px-2 py-2">Assembly</th>}
-                {hierarchyConfig.showTaluk && <th className="px-2 py-2">Taluk</th>}
-                {hierarchyConfig.showVillage && <th className="px-2 py-2">Village</th>}
-                <th className="px-2 py-2">{hierarchyConfig.wardLabel}</th>
+                <th className="px-2 py-2">District</th>
+                <th className="px-2 py-2">Assembly</th>
+                <th className="px-2 py-2">Area</th>
+                <th className="px-2 py-2">Ward</th>
                 <th className="px-2 py-2">Address</th>
                 <th className="px-2 py-2">Zone</th>
                 <th className="px-2 py-2">Added By</th>
@@ -573,12 +547,10 @@ export function DataEntryPage() {
                 <tr key={item.id} className="border-b last:border-b-0">
                   <td className="px-2 py-2">{item.name}</td>
                   <td className="px-2 py-2">{item.voterId}</td>
-                  {hierarchyConfig.showState && <td className="px-2 py-2">{item.state || '-'}</td>}
-                  {hierarchyConfig.showConstituency && <td className="px-2 py-2">{item.constituency || '-'}</td>}
-                  {hierarchyConfig.showAssemblyConstituency && <td className="px-2 py-2">{item.assemblyConstituency || '-'}</td>}
-                  {hierarchyConfig.showTaluk && <td className="px-2 py-2">{item.taluk?.name || '-'}</td>}
-                  {hierarchyConfig.showVillage && <td className="px-2 py-2">{item.village?.name || '-'}</td>}
-                  <td className="px-2 py-2">{item.ward ? `${hierarchyConfig.wardLabel} ${item.ward.wardNumber}` : item.wardId}</td>
+                  <td className="px-2 py-2">{defaultDistrict}</td>
+                  <td className="px-2 py-2">{item.constituency || defaultAssembly}</td>
+                  <td className="px-2 py-2">{wardById.get(item.wardId)?.village.name || '-'}</td>
+                  <td className="px-2 py-2">{item.ward?.wardNumber || wardById.get(item.wardId)?.wardNumber || '-'}</td>
                   <td className="px-2 py-2">{item.address}</td>
                   <td className="px-2 py-2">{item.zone.name}</td>
                   <td className="px-2 py-2">{item.addedBy.username}</td>

@@ -32,21 +32,96 @@ export class VotersService {
 
   /**
    * Get allowed ward IDs for a user.
-   * Returns null to allow all users to see all voters under the same tenant.
-   * Tenant isolation is enforced by candidateId filter instead.
+   * Returns null when user can access all wards under candidate.
    */
-  private async getAllowedWardIds(_actor: AuthenticatedUser): Promise<string[] | null> {
-    // All users (admin and sub-users) can see all voters under the same tenant
-    return null;
+  private async getAllowedWardIds(actor: AuthenticatedUser): Promise<string[] | null> {
+    if (actor.role === 'SUPER_ADMIN' || actor.role === 'ADMIN') {
+      return null;
+    }
+
+    const actorRow = await this.prisma.user.findFirst({
+      where: { id: actor.id, candidateId: actor.candidateId },
+      select: {
+        managedWardId: true,
+      },
+    });
+
+    if (!actorRow) {
+      return [];
+    }
+
+    if (actor.role === 'SUB_ADMIN') {
+      if (!actorRow.managedWardId) {
+        return [];
+      }
+
+      const actorManagedWard = await this.prisma.ward.findUnique({
+        where: { id: actorRow.managedWardId },
+        select: { villageId: true },
+      });
+
+      if (!actorManagedWard) {
+        return [];
+      }
+
+      const areaWards = await this.prisma.ward.findMany({
+        where: { villageId: actorManagedWard.villageId },
+        select: { id: true },
+      });
+
+      return areaWards.map((ward) => ward.id);
+    }
+
+    return actorRow.managedWardId ? [actorRow.managedWardId] : [];
   }
 
   /**
    * Check if actor has access to a specific ward.
    * All users under the same tenant have access to all wards.
    */
-  private async hasWardAccess(_actor: AuthenticatedUser, _wardId: string): Promise<boolean> {
-    // All users can access all wards within their tenant
-    return true;
+  private async hasWardAccess(actor: AuthenticatedUser, wardId: string): Promise<boolean> {
+    const allowedWardIds = await this.getAllowedWardIds(actor);
+    if (allowedWardIds === null) {
+      return true;
+    }
+    return allowedWardIds.includes(wardId);
+  }
+
+  private async getVisibleUserIds(actor: AuthenticatedUser): Promise<string[] | null> {
+    if (actor.role === 'SUPER_ADMIN') {
+      return null;
+    }
+
+    if (actor.role === 'ADMIN') {
+      const users = await this.prisma.user.findMany({
+        where: { candidateId: actor.candidateId },
+        select: { id: true },
+      });
+      return users.map((user) => user.id);
+    }
+
+    const visibleUserIds: string[] = [actor.id];
+    let frontier: string[] = [actor.id];
+
+    while (frontier.length > 0) {
+      const children = await this.prisma.user.findMany({
+        where: {
+          candidateId: actor.candidateId,
+          parentUserId: { in: frontier },
+        },
+        select: { id: true },
+      });
+
+      const childIds = children.map((item) => item.id);
+      if (childIds.length === 0) {
+        break;
+      }
+
+      visibleUserIds.push(...childIds);
+      frontier = childIds;
+    }
+
+    return visibleUserIds;
   }
 
   /**
@@ -96,7 +171,8 @@ export class VotersService {
     const page = this.normalizePage(query.page);
     const pageSize = this.normalizePageSize(query.pageSize);
     const allowedWardIds = await this.getAllowedWardIds(actor);
-    const where = this.buildWhere(query, actor.candidateId, allowedWardIds);
+    const visibleUserIds = await this.getVisibleUserIds(actor);
+    const where = this.buildWhere(query, actor.candidateId, allowedWardIds, visibleUserIds);
 
     const [total, items] = await this.prisma.$transaction([
       this.prisma.voter.count({ where }),
@@ -148,6 +224,11 @@ export class VotersService {
       isDeleted: false,
     };
 
+    const visibleUserIds = await this.getVisibleUserIds(actor);
+    if (visibleUserIds !== null) {
+      where.addedByUserId = { in: visibleUserIds };
+    }
+
     if (query.zoneId) {
       where.zoneId = query.zoneId;
     }
@@ -171,7 +252,7 @@ export class VotersService {
         select: { address: true },
       }),
       this.prisma.user.findMany({
-        where: { role: 'SUB_USER', candidateId: actor.candidateId },
+        where: { role: { in: ['SUB_ADMIN', 'SUB_USER', 'VOLUNTEER'] }, candidateId: actor.candidateId },
         orderBy: { username: 'asc' },
         select: { id: true, username: true },
       }),
@@ -191,7 +272,8 @@ export class VotersService {
 
   async exportVotersCsv(query: ListVotersQueryDto, actor: AuthenticatedUser) {
     const allowedWardIds = await this.getAllowedWardIds(actor);
-    const where = this.buildWhere(query, actor.candidateId, allowedWardIds);
+    const visibleUserIds = await this.getVisibleUserIds(actor);
+    const where = this.buildWhere(query, actor.candidateId, allowedWardIds, visibleUserIds);
     const voters = await this.prisma.voter.findMany({
       where,
       orderBy: { createdAt: 'desc' },
@@ -366,9 +448,16 @@ export class VotersService {
   }
 
   async updateVoter(voterId: string, payload: UpdateVoterDto, actor: AuthenticatedUser) {
+    const visibleUserIds = await this.getVisibleUserIds(actor);
+
     // Find voter ensuring it belongs to the same candidate
     const existing = await this.prisma.voter.findFirst({
-      where: { id: voterId, candidateId: actor.candidateId, isDeleted: false },
+      where: {
+        id: voterId,
+        candidateId: actor.candidateId,
+        isDeleted: false,
+        ...(visibleUserIds !== null ? { addedByUserId: { in: visibleUserIds } } : {}),
+      },
       select: { id: true, wardId: true },
     });
 
@@ -457,9 +546,16 @@ export class VotersService {
   }
 
   async deleteVoter(voterId: string, actor: AuthenticatedUser) {
+    const visibleUserIds = await this.getVisibleUserIds(actor);
+
     // Find voter ensuring it belongs to the same candidate
     const existing = await this.prisma.voter.findFirst({
-      where: { id: voterId, candidateId: actor.candidateId, isDeleted: false },
+      where: {
+        id: voterId,
+        candidateId: actor.candidateId,
+        isDeleted: false,
+        ...(visibleUserIds !== null ? { addedByUserId: { in: visibleUserIds } } : {}),
+      },
       select: { id: true, voterId: true, wardId: true },
     });
 
@@ -503,10 +599,13 @@ export class VotersService {
     const voted = payload.voted ?? true;
 
     // Build where clause with tenant isolation
+    const visibleUserIds = await this.getVisibleUserIds(actor);
+
     const where: Prisma.VoterWhereInput = {
       id: { in: uniqueIds },
       candidateId: actor.candidateId,
       isDeleted: false,
+      ...(visibleUserIds !== null ? { addedByUserId: { in: visibleUserIds } } : {}),
     };
 
     // Apply SubUserWard restrictions for SUB_USER role
@@ -551,10 +650,13 @@ export class VotersService {
     const uniqueIds = [...new Set(payload.voterIds)];
 
     // Build where clause with tenant isolation
+    const visibleUserIds = await this.getVisibleUserIds(actor);
+
     const where: Prisma.VoterWhereInput = {
       id: { in: uniqueIds },
       candidateId: actor.candidateId,
       isDeleted: false,
+      ...(visibleUserIds !== null ? { addedByUserId: { in: visibleUserIds } } : {}),
     };
 
     // Apply SubUserWard restrictions for SUB_USER role
@@ -591,10 +693,13 @@ export class VotersService {
     const uniqueIds = [...new Set(payload.voterIds)];
 
     // Build where clause with tenant isolation
+    const visibleUserIds = await this.getVisibleUserIds(actor);
+
     const where: Prisma.VoterWhereInput = {
       id: { in: uniqueIds },
       candidateId: actor.candidateId,
       isDeleted: false,
+      ...(visibleUserIds !== null ? { addedByUserId: { in: visibleUserIds } } : {}),
     };
 
     // Apply SubUserWard restrictions for SUB_USER role
@@ -632,11 +737,16 @@ export class VotersService {
     query: ListVotersQueryDto,
     candidateId: string,
     allowedWardIds: string[] | null,
+    visibleUserIds: string[] | null,
   ): Prisma.VoterWhereInput {
     const where: Prisma.VoterWhereInput = {
       candidateId,
       isDeleted: false,
     };
+
+    if (visibleUserIds !== null) {
+      where.addedByUserId = { in: visibleUserIds };
+    }
 
     // Apply SubUserWard restrictions if applicable
     if (allowedWardIds !== null) {

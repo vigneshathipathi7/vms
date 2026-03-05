@@ -1,0 +1,47 @@
+{
+  "district": "Virudhunagar",
+  "constituencies": [
+    {
+      "name": "Rajapalayam",
+      "acCode": "201",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Srivilliputhur",
+      "acCode": "202",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Sattur",
+      "acCode": "203",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Sivakasi",
+      "acCode": "204",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Virudhunagar",
+      "acCode": "205",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Aruppukkottai",
+      "acCode": "206",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Tiruchuli",
+      "acCode": "207",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

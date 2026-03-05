@@ -1,0 +1,29 @@
+{
+  "district": "Ramanathapuram",
+  "constituencies": [
+    {
+      "name": "Paramakudi",
+      "acCode": "208",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Tiruvadanai",
+      "acCode": "209",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Ramanathapuram",
+      "acCode": "210",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Mudhukulathur",
+      "acCode": "211",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

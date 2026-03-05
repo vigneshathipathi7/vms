@@ -104,7 +104,7 @@ export function TermsOfServicePage() {
             </p>
             <ul className="list-disc pl-6 text-gray-700 mb-4">
               <li>Admin users have full access to their organization's data</li>
-              <li>Sub-users are restricted to assigned wards/zones only</li>
+              <li>Area secretaries, ward members, and volunteers are restricted to their assigned wards/zones only</li>
               <li>No cross-tenant data access is permitted</li>
               <li>All data access is logged for audit purposes</li>
             </ul>

@@ -1,0 +1,47 @@
+{
+  "district": "Viluppuram",
+  "constituencies": [
+    {
+      "name": "Gingee",
+      "acCode": "70",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Mailam",
+      "acCode": "71",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Tindivanam",
+      "acCode": "72",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Vanur",
+      "acCode": "73",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Villupuram",
+      "acCode": "74",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Vikravandi",
+      "acCode": "75",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Rishivandiyam",
+      "acCode": "78",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

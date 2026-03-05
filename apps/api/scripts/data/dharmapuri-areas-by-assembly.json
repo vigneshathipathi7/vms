@@ -1,0 +1,35 @@
+{
+  "district": "Dharmapuri",
+  "constituencies": [
+    {
+      "name": "Palacode",
+      "acCode": "57",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Pennagaram",
+      "acCode": "58",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Dharmapuri",
+      "acCode": "59",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Pappireddippatti",
+      "acCode": "60",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Harur",
+      "acCode": "61",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

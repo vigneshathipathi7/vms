@@ -1,0 +1,29 @@
+{
+  "district": "Theni",
+  "constituencies": [
+    {
+      "name": "Andipatti",
+      "acCode": "197",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Periyakulam",
+      "acCode": "198",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Bodinayakanur",
+      "acCode": "199",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Cumbum",
+      "acCode": "200",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}

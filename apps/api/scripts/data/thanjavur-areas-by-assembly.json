@@ -1,0 +1,53 @@
+{
+  "district": "Thanjavur",
+  "constituencies": [
+    {
+      "name": "Thiruvidaimarudur",
+      "acCode": "169",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Kumbakonam",
+      "acCode": "170",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Papanasam",
+      "acCode": "171",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Thiruvaiyaru",
+      "acCode": "172",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Thanjavur",
+      "acCode": "173",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Orathanadu",
+      "acCode": "174",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Pattukkottai",
+      "acCode": "175",
+      "urbanAreas": [],
+      "ruralVillages": []
+    },
+    {
+      "name": "Peravurani",
+      "acCode": "176",
+      "urbanAreas": [],
+      "ruralVillages": []
+    }
+  ]
+}
